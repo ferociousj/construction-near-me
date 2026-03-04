@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Construction Near Me</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a1a; color: #e0e0e0; overflow: hidden; height: 100vh; }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  #header { position: fixed; top: 0; left: 0; right: 0; height: 50px; z-index: 1000; background: linear-gradient(180deg, rgba(10,10,26,0.97), rgba(10,10,26,0.8)); display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  #header h1 { font-size: 18px; color: #f59e0b; font-weight: 700; letter-spacing: 0.4px; text-shadow: 0 0 40px rgba(245,158,11,0.2); }
+  #admin-link { position: absolute; right: 14px; background: none; border: none; color: rgba(255,255,255,0.06); font-size: 10px; cursor: pointer; }
+
+  /* ── Map ─────────────────────────────────────────────────── */
+  #map { position: fixed; top: 50px; left: 0; right: 0; bottom: 0; z-index: 1; }
+  .leaflet-container { background: #0f1729 !important; }
+
+  /* ── Badge ───────────────────────────────────────────────── */
+  #count-badge { position: fixed; top: 60px; right: 14px; z-index: 800; background: rgba(10,18,32,0.9); border-radius: 8px; padding: 5px 13px; color: #888; font-size: 12px; border: 1px solid rgba(255,255,255,0.05); font-weight: 500; }
+
+  /* ── Legend ──────────────────────────────────────────────── */
+  #legend { position: fixed; bottom: 20px; left: 20px; z-index: 800; background: rgba(10,18,32,0.9); border-radius: 10px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.05); }
+  #legend h4 { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; font-weight: 600; }
+  .legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .legend-row span:last-child { font-size: 11px; color: #888; }
+
+  /* ── Search Panel ───────────────────────────────────────── */
+  #search-toggle { position: fixed; top: 60px; left: 10px; z-index: 900; background: rgba(10,18,32,0.9); color: #f59e0b; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 15px; font-size: 13px; cursor: pointer; font-weight: 500; }
+  #search-toggle.active { color: #888; }
+  #search-panel { position: fixed; top: 98px; left: 10px; width: 270px; z-index: 880; background: rgba(16,16,38,0.97); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 18px; max-height: calc(100vh - 118px); overflow-y: auto; box-shadow: 0 16px 50px rgba(0,0,0,0.5); display: none; }
+  #search-panel.open { display: block; }
+  .filter-label { font-size: 10px; color: #777; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; font-weight: 600; }
+  .filter-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .filter-input { flex: 1; padding: 7px 10px; border-radius: 7px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07); color: #ccc; font-size: 13px; outline: none; }
+  .filter-check { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 14px; }
+  .filter-check.on { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.2); }
+  .machine-filter { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
+  .machine-filter label { display: flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px; cursor: pointer; font-size: 11.5px; border: 1px solid transparent; }
+  .machine-filter label.on { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.18); }
+  .machine-filter input, .filter-check input { accent-color: #f59e0b; }
+  .btn-apply { width: 100%; padding: 10px; border-radius: 9px; border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 6px; }
+  .btn-reset { width: 100%; padding: 8px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.07); background: transparent; color: #777; font-size: 12px; cursor: pointer; }
+
+  /* ── Report Button ──────────────────────────────────────── */
+  #report-btn { position: fixed; bottom: 24px; right: 20px; z-index: 900; border: none; border-radius: 14px; padding: 13px 24px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,0.45); letter-spacing: 0.3px; transition: all 0.2s; }
+  #report-btn.normal { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; }
+  #report-btn.cancel { background: #dc2626; color: #fff; }
+  #placing-hint { position: fixed; bottom: 76px; right: 20px; z-index: 900; background: rgba(10,18,32,0.93); border-radius: 10px; padding: 10px 18px; color: #f59e0b; font-size: 13px; border: 1px solid rgba(245,158,11,0.18); box-shadow: 0 4px 20px rgba(0,0,0,0.4); font-weight: 500; display: none; }
+
+  /* ── Overlays / Modals ──────────────────────────────────── */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .overlay.open { display: flex; }
+  .modal { background: linear-gradient(145deg, #161630, #1a1a30); border-radius: 22px; padding: 28px 30px; color: #e0e0e0; border: 1px solid rgba(255,255,255,0.07); box-shadow: 0 30px 80px rgba(0,0,0,0.6); max-height: 85vh; overflow-y: auto; }
+  .modal h2 { margin: 0 0 4px; font-size: 22px; color: #f59e0b; font-weight: 700; }
+  .modal-sub { color: #777; font-size: 13px; margin: 0 0 22px; }
+  .machine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+  .machine-grid label { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; cursor: pointer; font-size: 12.5px; border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02); transition: all 0.15s; }
+  .machine-grid label.on { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.35); }
+  .machine-grid input { accent-color: #f59e0b; }
+  .text-input { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: #e0e0e0; font-size: 13px; outline: none; }
+  .gv-check { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 11px 14px; border-radius: 12px; margin-bottom: 22px; font-size: 14px; border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02); transition: all 0.15s; }
+  .gv-check.on { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.25); }
+  .gv-check input { accent-color: #22c55e; }
+  .btn-row { display: flex; gap: 10px; }
+  .btn-cancel { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: transparent; color: #999; font-size: 14px; cursor: pointer; }
+  .btn-save { flex: 1; padding: 12px; border-radius: 12px; border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+  /* ── Pin Popup (Leaflet) ────────────────────────────────── */
+  .leaflet-popup-content-wrapper { background: linear-gradient(145deg, #161630, #1a1a30) !important; color: #e0e0e0 !important; border-radius: 16px !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 16px 48px rgba(0,0,0,0.5) !important; }
+  .leaflet-popup-tip { background: #1a1a30 !important; }
+  .leaflet-popup-close-button { color: #666 !important; font-size: 20px !important; }
+  .pin-popup { min-width: 240px; }
+  .pin-status { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .pin-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .pin-status span { font-size: 11px; color: #999; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 500; }
+  .pin-location { font-size: 13px; color: #bbb; margin-bottom: 10px; }
+  .pin-machines { margin-bottom: 12px; }
+  .pin-machines h5 { font-size: 10px; color: #777; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+  .pin-machines .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .pin-machines .tag { background: rgba(245,158,11,0.12); color: #e8a838; padding: 3px 11px; border-radius: 20px; font-size: 11.5px; border: 1px solid rgba(245,158,11,0.18); font-weight: 500; }
+  .pin-meta { display: flex; gap: 18px; font-size: 12.5px; color: #999; margin-bottom: 14px; }
+  .btn-still { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
+
+  /* ── Admin Page ─────────────────────────────────────────── */
+  #admin-page { display: none; position: fixed; inset: 0; z-index: 5000; background: #0a0a1a; overflow-y: auto; padding: 24px; }
+  #admin-page.open { display: block; }
+  #admin-login { display: none; position: fixed; inset: 0; z-index: 5000; background: #0a0a1a; align-items: center; justify-content: center; }
+  #admin-login.open { display: flex; }
+  .admin-login-box { background: linear-gradient(145deg, #161630, #1a1a30); border-radius: 22px; padding: 40px; width: 340px; border: 1px solid rgba(255,255,255,0.07); text-align: center; box-shadow: 0 24px 70px rgba(0,0,0,0.6); }
+  .admin-login-box .icon { font-size: 40px; margin-bottom: 12px; }
+  .admin-login-box h2 { color: #f59e0b; margin: 0 0 6px; font-size: 22px; }
+  .admin-login-box p { color: #555; font-size: 13px; margin: 0 0 24px; }
+  .admin-login-box input { width: 100%; padding: 13px 16px; border-radius: 12px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.025); color: #e0e0e0; font-size: 15px; outline: none; text-align: center; }
+  .admin-login-box input.error { border-color: rgba(239,68,68,0.5); }
+  .admin-login-box .err-msg { color: #ef4444; font-size: 13px; margin: 0 0 10px; display: none; }
+  .admin-login-box .btn-enter { width: 100%; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 12px; }
+  .admin-login-box .btn-back { background: none; border: none; color: #444; font-size: 13px; cursor: pointer; }
+
+  .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; max-width: 1100px; margin-left: auto; margin-right: auto; }
+  .admin-header h1 { margin: 0; font-size: 28px; color: #f59e0b; font-weight: 700; }
+  .admin-header .sub { color: #555; margin: 4px 0 0; font-size: 13px; }
+  .admin-btn { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: #999; padding: 7px 16px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+  .admin-btn:hover { background: rgba(255,255,255,0.06); }
+  .admin-btn.back { margin-bottom: 10px; display: inline-block; }
+  .admin-btn.danger { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.25); color: #f87171; }
+  .admin-btn.warn { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.25); color: #f59e0b; }
+  .admin-btn:disabled { opacity: 0.4; cursor: default; }
+  .admin-filter-bar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; max-width: 1100px; margin-left: auto; margin-right: auto; }
+  .admin-filter-bar span { font-size: 11px; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .admin-filter-bar select, .admin-filter-bar input { background: #151528; color: #ccc; border: 1px solid rgba(255,255,255,0.08); border-radius: 7px; padding: 7px 10px; font-size: 13px; outline: none; }
+  .admin-actions { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; max-width: 1100px; margin-left: auto; margin-right: auto; }
+  .admin-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); max-width: 1100px; margin: 0 auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .admin-table thead tr { background: rgba(255,255,255,0.02); }
+  .admin-table th { padding: 11px 12px; text-align: left; color: #666; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px; cursor: pointer; user-select: none; border-bottom: 1px solid rgba(255,255,255,0.05); white-space: nowrap; font-weight: 600; }
+  .admin-table td { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .admin-table tr.selected { background: rgba(245,158,11,0.04); }
+  .admin-table input[type=checkbox] { accent-color: #f59e0b; }
+  .tag-sm { background: rgba(245,158,11,0.08); color: #c8923a; padding: 2px 8px; border-radius: 10px; font-size: 10.5px; font-weight: 500; display: inline-block; margin: 1px 2px; }
+  .fresh-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .empty-row td { padding: 40px; text-align: center; color: #444; }
+
+  /* Admin modals */
+  .admin-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 6000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .admin-modal-overlay.open { display: flex; }
+  .admin-modal { background: linear-gradient(145deg, #161630, #1a1a30); border-radius: 18px; padding: 28px; border: 1px solid rgba(255,255,255,0.07); box-shadow: 0 24px 70px rgba(0,0,0,0.6); }
+  .admin-modal h3 { margin: 0 0 16px; color: #f59e0b; font-size: 20px; font-weight: 700; }
+  .admin-modal input { width: 100%; padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.025); color: #e0e0e0; font-size: 14px; outline: none; }
+  .admin-modal .err { color: #ef4444; font-size: 13px; margin: 0 0 8px; display: none; }
+  .admin-modal .btn-row { display: flex; gap: 10px; margin-top: 8px; }
+  .admin-modal .btn-row button { flex: 1; padding: 11px; border-radius: 10px; font-size: 14px; cursor: pointer; }
+  .admin-modal .btn-row .cancel { border: 1px solid rgba(255,255,255,0.08); background: transparent; color: #999; }
+  .admin-modal .btn-row .save { border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <h1>🚧 Construction Near Me</h1>
+  <button id="admin-link" onclick="showAdminLogin()">admin</button>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- COUNT BADGE -->
+<div id="count-badge">0 sites</div>
+
+<!-- LEGEND -->
+<div id="legend">
+  <h4>Freshness</h4>
+  <div class="legend-row"><div class="legend-dot" style="background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.5)"></div><span>≤ 7 days</span></div>
+  <div class="legend-row"><div class="legend-dot" style="background:#eab308;box-shadow:0 0 6px rgba(234,179,8,0.5)"></div><span>8–14 days</span></div>
+  <div class="legend-row"><div class="legend-dot" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.5)"></div><span>> 14 days</span></div>
+</div>
+
+<!-- SEARCH TOGGLE + PANEL -->
+<button id="search-toggle" onclick="toggleSearch()">🔍 Search & Filter</button>
+<div id="search-panel">
+  <div class="filter-label">Freshness (days old)</div>
+  <div class="filter-row">
+    <input class="filter-input" id="f-min" type="number" min="0" placeholder="Min">
+    <input class="filter-input" id="f-max" type="number" min="0" placeholder="Max" value="30">
+  </div>
+  <label class="filter-check" id="f-gv" onclick="toggleGvFilter()">
+    <input type="checkbox" id="f-gv-cb"> 👁 Good view only
+  </label>
+  <div class="filter-label">Machinery</div>
+  <div class="machine-filter" id="f-machines"></div>
+  <button class="btn-apply" onclick="applyFilters()">Apply Filters</button>
+  <button class="btn-reset" onclick="resetFilters()">Reset</button>
+</div>
+
+<!-- REPORT BUTTON + HINT -->
+<button id="report-btn" class="normal" onclick="togglePlacing()">📍 Report a Sighting</button>
+<div id="placing-hint">Click the map to place a pin 📍</div>
+
+<!-- REPORT OVERLAY -->
+<div class="overlay" id="report-overlay">
+  <div class="modal" style="width:92%;max-width:520px;">
+    <h2>Report a Sighting</h2>
+    <p class="modal-sub" id="report-loc"></p>
+    <div class="filter-label" style="margin-bottom:10px">Construction Machinery</div>
+    <div class="machine-grid" id="report-machines"></div>
+    <input class="text-input" id="report-custom" placeholder="Other machinery (freeform)..." style="margin-bottom:20px">
+    <label class="gv-check" id="report-gv" onclick="toggleReportGv()">
+      <input type="checkbox" id="report-gv-cb"> 👁 Good view of the construction?
+    </label>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeReport()">Cancel</button>
+      <button class="btn-save" onclick="saveReport()">Save Sighting</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div id="admin-login">
+  <div class="admin-login-box">
+    <div class="icon">🔐</div>
+    <h2>Admin Access</h2>
+    <p>Enter password to continue</p>
+    <input type="password" id="admin-pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')tryAdminLogin()">
+    <p class="err-msg" id="admin-login-err">Incorrect password</p>
+    <button class="btn-enter" onclick="tryAdminLogin()">Enter</button>
+    <button class="btn-back" onclick="hideAdminLogin()">← Back to map</button>
+  </div>
+</div>
+
+<!-- ADMIN PAGE -->
+<div id="admin-page">
+  <div class="admin-header">
+    <div>
+      <button class="admin-btn back" onclick="hideAdmin()">← Back to Map</button>
+      <h1>Admin Interface</h1>
+      <p class="sub" id="admin-count"></p>
+    </div>
+    <button class="admin-btn" onclick="showChangePw()">Change Password</button>
+  </div>
+  <div class="admin-filter-bar">
+    <span>Filter:</span>
+    <select id="a-filter-col" onchange="document.getElementById('a-filter-val').value=''">
+      <option value="none">None</option>
+      <option value="goodView">Good View</option>
+      <option value="freshness">Freshness ≥</option>
+      <option value="machines">Machines</option>
+    </select>
+    <input id="a-filter-val" placeholder="value...">
+  </div>
+  <div class="admin-actions">
+    <button class="admin-btn danger" id="a-del-btn" onclick="adminDelete()" disabled>Delete (0)</button>
+    <button class="admin-btn" onclick="adminSelectAll()">Select All</button>
+    <button class="admin-btn" onclick="adminDeselectAll()">Deselect All</button>
+    <button class="admin-btn warn" id="a-fresh-btn" onclick="showSetFreshness()" disabled>Set Freshness</button>
+  </div>
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead><tr>
+        <th><input type="checkbox" id="a-check-all" onchange="adminToggleAll(this.checked)"></th>
+        <th onclick="adminSort('location')">Location</th>
+        <th onclick="adminSort('machines')">Machines</th>
+        <th onclick="adminSort('goodView')">View</th>
+        <th onclick="adminSort('dateReported')">Date</th>
+        <th onclick="adminSort('freshness')">Fresh</th>
+      </tr></thead>
+      <tbody id="admin-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ADMIN: Change Password Modal -->
+<div class="admin-modal-overlay" id="pw-modal">
+  <div class="admin-modal" style="width:340px">
+    <h3>Change Password?</h3>
+    <input type="password" id="pw-new1" placeholder="New password">
+    <input type="password" id="pw-new2" placeholder="Confirm password">
+    <p class="err" id="pw-err">Your entries don't match, friend</p>
+    <div class="btn-row">
+      <button class="cancel" onclick="hideChangePw()">Cancel</button>
+      <button class="save" onclick="doChangePw()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN: Set Freshness Modal -->
+<div class="admin-modal-overlay" id="fresh-modal">
+  <div class="admin-modal" style="width:300px">
+    <h3>Set Freshness</h3>
+    <p style="color:#777;font-size:13px;margin:0 0 12px" id="fresh-count"></p>
+    <input type="number" id="fresh-val" min="0" placeholder="Days...">
+    <div class="btn-row">
+      <button class="cancel" onclick="hideSetFreshness()">Cancel</button>
+      <button class="save" onclick="doSetFreshness()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA & STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+const MACHINERY = [
+  "Bulldozer","Excavator","Backhoe","Front Loader","Bobcat/Skid Steer",
+  "Concrete Mixer","Crane Truck","Construction Crane","Dump Truck",
+  "Concrete Pumper","Wrecking Ball","Asphalt Spreader","Road Grader",
+  "Steamroller","Forklift"
+];
+const D = 864e5;
+const SEEDS = [
+  {id:"s1",lat:37.7849,lng:-122.4094,machines:["Excavator","Dump Truck","Construction Crane"],goodView:true,dateReported:new Date(Date.now()-2*D).toISOString(),custom:""},
+  {id:"s2",lat:37.7695,lng:-122.4230,machines:["Bulldozer","Front Loader"],goodView:false,dateReported:new Date(Date.now()-8*D).toISOString(),custom:""},
+  {id:"s3",lat:37.7780,lng:-122.3950,machines:["Concrete Mixer","Concrete Pumper","Crane Truck"],goodView:true,dateReported:new Date(Date.now()-16*D).toISOString(),custom:""},
+  {id:"s4",lat:37.7920,lng:-122.4050,machines:["Steamroller","Asphalt Spreader","Road Grader"],goodView:false,dateReported:new Date(Date.now()-3*D).toISOString(),custom:"Paving machine"},
+  {id:"s5",lat:37.7650,lng:-122.4320,machines:["Wrecking Ball","Excavator"],goodView:true,dateReported:new Date(Date.now()-22*D).toISOString(),custom:""},
+  {id:"s6",lat:37.7810,lng:-122.4150,machines:["Forklift","Bobcat/Skid Steer"],goodView:false,dateReported:new Date(Date.now()-1*D).toISOString(),custom:""},
+  {id:"s7",lat:37.7760,lng:-122.4280,machines:["Construction Crane","Concrete Mixer"],goodView:true,dateReported:new Date(Date.now()-5*D).toISOString(),custom:""},
+  {id:"s8",lat:37.7880,lng:-122.4180,machines:["Backhoe","Dump Truck","Front Loader"],goodView:true,dateReported:new Date(Date.now()-11*D).toISOString(),custom:""},
+];
+
+let pins = JSON.parse(localStorage.getItem('cnm-pins')) || SEEDS;
+let adminPw = localStorage.getItem('cnm-pw') || 'chocolaterain';
+let placing = false;
+let newLatLng = null;
+let map, markers = [];
+let adminSelected = new Set();
+let adminSortCol = 'dateReported', adminSortDir = 'desc';
+
+function savePins() { localStorage.setItem('cnm-pins', JSON.stringify(pins)); }
+function savePw() { localStorage.setItem('cnm-pw', adminPw); }
+function freshness(d) { return Math.floor((Date.now() - new Date(d).getTime()) / D); }
+function pinColor(f) { return f <= 7 ? '#22c55e' : f <= 14 ? '#eab308' : '#ef4444'; }
+function pinLabel(f) { return f <= 7 ? 'Green' : f <= 14 ? 'Yellow' : 'Red'; }
+function uid() { return 'p' + Date.now() + Math.random().toString(36).slice(2,7); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAP INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+function initMap() {
+  map = L.map('map', { zoomControl: false }).setView([37.7749, -122.4194], 13);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19,
+  }).addTo(map);
+
+  map.on('click', function(e) {
+    if (placing) {
+      newLatLng = e.latlng;
+      document.getElementById('report-loc').textContent = '📍 ' + e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
+      openReport();
+    }
+  });
+
+  renderPins();
+}
+
+function makeIcon(color, selected) {
+  const size = selected ? 28 : 20;
+  return L.divIcon({
+    className: 'cnm-pin',
+    html: `<div style="width:${size}px;height:${size}px;background:${color};border:3px solid ${selected?'#fff':'rgba(0,0,0,0.25)'};border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 0 12px ${color}60;cursor:pointer;"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size/2, size/2],
+  });
+}
+
+function getFilters() {
+  const minD = document.getElementById('f-min').value;
+  const maxD = document.getElementById('f-max').value;
+  const gv = document.getElementById('f-gv-cb').checked;
+  const mEls = document.querySelectorAll('#f-machines input:checked');
+  const machines = Array.from(mEls).map(el => el.value);
+  return { minDays: minD, maxDays: maxD, goodViewOnly: gv, machines };
+}
+
+function filterPins() {
+  const f = getFilters();
+  return pins.filter(pin => {
+    const fr = freshness(pin.dateReported);
+    if (f.maxDays && fr > parseInt(f.maxDays)) return false;
+    if (f.minDays && fr < parseInt(f.minDays)) return false;
+    if (f.goodViewOnly && !pin.goodView) return false;
+    if (f.machines.length > 0) {
+      const pm = [...pin.machines, ...(pin.custom ? [pin.custom] : [])];
+      if (!f.machines.some(m => pm.includes(m))) return false;
+    }
+    return true;
+  });
+}
+
+function renderPins() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  const filtered = filterPins();
+  document.getElementById('count-badge').textContent = filtered.length + ' site' + (filtered.length !== 1 ? 's' : '');
+
+  filtered.forEach(pin => {
+    const fr = freshness(pin.dateReported);
+    const color = pinColor(fr);
+    const marker = L.marker([pin.lat, pin.lng], { icon: makeIcon(color, false) }).addTo(map);
+    marker.on('click', () => showPinPopup(pin, marker));
+    markers.push(marker);
+  });
+}
+
+function showPinPopup(pin, marker) {
+  const fr = freshness(pin.dateReported);
+  const color = pinColor(fr);
+  const allM = [...pin.machines, ...(pin.custom ? [pin.custom] : [])];
+  const tagsHtml = allM.map(m => `<span class="tag">${m}</span>`).join('');
+  const html = `
+    <div class="pin-popup">
+      <div class="pin-status">
+        <div class="pin-dot" style="background:${color};box-shadow:0 0 10px ${color}80"></div>
+        <span>${pinLabel(fr)} · ${fr} day${fr!==1?'s':''} old</span>
+      </div>
+      <div class="pin-location">📍 ${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}</div>
+      ${allM.length ? `<div class="pin-machines"><h5>Machinery</h5><div class="tags">${tagsHtml}</div></div>` : ''}
+      <div class="pin-meta">
+        <span>${pin.goodView ? '👁 Good view' : '👁 No view info'}</span>
+        <span>📅 ${new Date(pin.dateReported).toLocaleDateString()}</span>
+      </div>
+      <button class="btn-still" onclick="stillThere('${pin.id}')">Still there? ✓</button>
+    </div>
+  `;
+  marker.bindPopup(html, { maxWidth: 350, minWidth: 260 }).openPopup();
+}
+
+function stillThere(id) {
+  pins = pins.map(p => p.id === id ? { ...p, dateReported: new Date().toISOString() } : p);
+  savePins();
+  map.closePopup();
+  renderPins();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SEARCH PANEL
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildFilterMachines() {
+  const container = document.getElementById('f-machines');
+  container.innerHTML = MACHINERY.map(m => `
+    <label><input type="checkbox" value="${m}"> ${m}</label>
+  `).join('');
+}
+
+function toggleSearch() {
+  const panel = document.getElementById('search-panel');
+  const btn = document.getElementById('search-toggle');
+  panel.classList.toggle('open');
+  btn.classList.toggle('active');
+  btn.textContent = panel.classList.contains('open') ? '✕ Close' : '🔍 Search & Filter';
+}
+
+function toggleGvFilter() {
+  const el = document.getElementById('f-gv');
+  const cb = document.getElementById('f-gv-cb');
+  // checkbox toggles itself, just update class
+  setTimeout(() => el.classList.toggle('on', cb.checked), 0);
+}
+
+function applyFilters() { renderPins(); }
+function resetFilters() {
+  document.getElementById('f-min').value = '';
+  document.getElementById('f-max').value = '30';
+  document.getElementById('f-gv-cb').checked = false;
+  document.getElementById('f-gv').classList.remove('on');
+  document.querySelectorAll('#f-machines input').forEach(el => { el.checked = false; el.parentElement.classList.remove('on'); });
+  renderPins();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REPORTING
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildReportMachines() {
+  document.getElementById('report-machines').innerHTML = MACHINERY.map(m => `
+    <label><input type="checkbox" value="${m}" onchange="this.parentElement.classList.toggle('on',this.checked)"> ${m}</label>
+  `).join('');
+}
+
+function togglePlacing() {
+  placing = !placing;
+  const btn = document.getElementById('report-btn');
+  const hint = document.getElementById('placing-hint');
+  if (placing) {
+    btn.className = 'cancel'; btn.textContent = '✕ Cancel';
+    hint.style.display = 'block';
+    document.getElementById('map').style.cursor = 'crosshair';
+  } else {
+    btn.className = 'normal'; btn.textContent = '📍 Report a Sighting';
+    hint.style.display = 'none';
+    document.getElementById('map').style.cursor = '';
+    closeReport();
+  }
+}
+
+function openReport() {
+  document.getElementById('report-overlay').classList.add('open');
+  document.getElementById('placing-hint').style.display = 'none';
+}
+
+function closeReport() {
+  document.getElementById('report-overlay').classList.remove('open');
+  document.querySelectorAll('#report-machines input').forEach(el => { el.checked = false; el.parentElement.classList.remove('on'); });
+  document.getElementById('report-custom').value = '';
+  document.getElementById('report-gv-cb').checked = false;
+  document.getElementById('report-gv').classList.remove('on');
+  newLatLng = null;
+}
+
+function toggleReportGv() {
+  setTimeout(() => {
+    const cb = document.getElementById('report-gv-cb');
+    document.getElementById('report-gv').classList.toggle('on', cb.checked);
+  }, 0);
+}
+
+function saveReport() {
+  if (!newLatLng) return;
+  const machines = Array.from(document.querySelectorAll('#report-machines input:checked')).map(el => el.value);
+  const custom = document.getElementById('report-custom').value.trim();
+  const goodView = document.getElementById('report-gv-cb').checked;
+  pins.push({
+    id: uid(), lat: newLatLng.lat, lng: newLatLng.lng,
+    machines, custom, goodView, dateReported: new Date().toISOString(),
+  });
+  savePins();
+  closeReport();
+  placing = false;
+  document.getElementById('report-btn').className = 'normal';
+  document.getElementById('report-btn').textContent = '📍 Report a Sighting';
+  document.getElementById('map').style.cursor = '';
+  renderPins();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════════════════════════════════════
+function showAdminLogin() {
+  document.getElementById('admin-login').classList.add('open');
+  document.getElementById('admin-pw-input').value = '';
+  document.getElementById('admin-pw-input').classList.remove('error');
+  document.getElementById('admin-login-err').style.display = 'none';
+  setTimeout(() => document.getElementById('admin-pw-input').focus(), 100);
+}
+function hideAdminLogin() { document.getElementById('admin-login').classList.remove('open'); }
+
+function tryAdminLogin() {
+  const val = document.getElementById('admin-pw-input').value;
+  if (val === adminPw) {
+    hideAdminLogin();
+    showAdmin();
+  } else {
+    document.getElementById('admin-pw-input').classList.add('error');
+    document.getElementById('admin-login-err').style.display = 'block';
+  }
+}
+
+function showAdmin() {
+  adminSelected = new Set();
+  document.getElementById('admin-page').classList.add('open');
+  renderAdminTable();
+}
+function hideAdmin() { document.getElementById('admin-page').classList.remove('open'); renderPins(); }
+
+function adminFilteredPins() {
+  const col = document.getElementById('a-filter-col').value;
+  const val = document.getElementById('a-filter-val').value.toLowerCase().trim();
+  if (col === 'none' || !val) return [...pins];
+  return pins.filter(pin => {
+    if (col === 'goodView') return pin.goodView === (val === 'yes' || val === 'true');
+    if (col === 'freshness') return freshness(pin.dateReported) >= parseInt(val);
+    if (col === 'machines') {
+      const terms = val.split(',').map(t => t.trim());
+      const pm = [...pin.machines, ...(pin.custom ? [pin.custom] : [])].map(m => m.toLowerCase());
+      return terms.every(t => pm.some(m => m.includes(t)));
+    }
+    return true;
+  });
+}
+
+function adminSortedPins() {
+  const list = adminFilteredPins();
+  list.sort((a, b) => {
+    let av, bv;
+    if (adminSortCol === 'freshness') { av = freshness(a.dateReported); bv = freshness(b.dateReported); }
+    else if (adminSortCol === 'dateReported') { av = new Date(a.dateReported).getTime(); bv = new Date(b.dateReported).getTime(); }
+    else if (adminSortCol === 'goodView') { av = a.goodView ? 1 : 0; bv = b.goodView ? 1 : 0; }
+    else if (adminSortCol === 'location') { av = a.lat; bv = b.lat; }
+    else { av = a.machines.length; bv = b.machines.length; }
+    return adminSortDir === 'asc' ? av - bv : bv - av;
+  });
+  return list;
+}
+
+function adminSort(col) {
+  if (adminSortCol === col) adminSortDir = adminSortDir === 'asc' ? 'desc' : 'asc';
+  else { adminSortCol = col; adminSortDir = 'asc'; }
+  renderAdminTable();
+}
+
+function renderAdminTable() {
+  const sorted = adminSortedPins();
+  document.getElementById('admin-count').textContent = pins.length + ' total pins · ' + sorted.length + ' shown';
+  const tbody = document.getElementById('admin-tbody');
+  if (sorted.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No pins match the current filter.</td></tr>';
+  } else {
+    tbody.innerHTML = sorted.map(pin => {
+      const f = freshness(pin.dateReported);
+      const c = pinColor(f);
+      const allM = [...pin.machines, ...(pin.custom ? [pin.custom] : [])];
+      const tags = allM.map(m => `<span class="tag-sm">${m}</span>`).join('');
+      const checked = adminSelected.has(pin.id) ? 'checked' : '';
+      const cls = adminSelected.has(pin.id) ? 'selected' : '';
+      return `<tr class="${cls}">
+        <td><input type="checkbox" ${checked} onchange="adminToggleRow('${pin.id}',this.checked)"></td>
+        <td style="color:#bbb;white-space:nowrap;font-variant-numeric:tabular-nums">${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}</td>
+        <td>${tags}</td>
+        <td style="color:${pin.goodView?'#22c55e':'#555'};font-weight:500">${pin.goodView?'Yes':'No'}</td>
+        <td style="color:#999">${new Date(pin.dateReported).toLocaleDateString()}</td>
+        <td><span class="fresh-dot" style="background:${c};box-shadow:0 0 6px ${c}50"></span>${f}d</td>
+      </tr>`;
+    }).join('');
+  }
+  updateAdminButtons();
+}
+
+function adminToggleRow(id, checked) {
+  if (checked) adminSelected.add(id); else adminSelected.delete(id);
+  renderAdminTable();
+}
+function adminToggleAll(checked) {
+  const sorted = adminSortedPins();
+  if (checked) sorted.forEach(p => adminSelected.add(p.id)); else adminSelected.clear();
+  renderAdminTable();
+}
+function adminSelectAll() { adminSortedPins().forEach(p => adminSelected.add(p.id)); renderAdminTable(); }
+function adminDeselectAll() { adminSelected.clear(); renderAdminTable(); }
+
+function updateAdminButtons() {
+  const n = adminSelected.size;
+  document.getElementById('a-del-btn').disabled = n === 0;
+  document.getElementById('a-del-btn').textContent = `Delete (${n})`;
+  document.getElementById('a-fresh-btn').disabled = n === 0;
+  document.getElementById('a-check-all').checked = adminSortedPins().length > 0 && n === adminSortedPins().length;
+}
+
+function adminDelete() {
+  pins = pins.filter(p => !adminSelected.has(p.id));
+  adminSelected.clear();
+  savePins();
+  renderAdminTable();
+}
+
+// Change password
+function showChangePw() { document.getElementById('pw-modal').classList.add('open'); document.getElementById('pw-new1').value=''; document.getElementById('pw-new2').value=''; document.getElementById('pw-err').style.display='none'; }
+function hideChangePw() { document.getElementById('pw-modal').classList.remove('open'); }
+function doChangePw() {
+  const p1 = document.getElementById('pw-new1').value;
+  const p2 = document.getElementById('pw-new2').value;
+  if (!p1) { document.getElementById('pw-err').textContent = 'Password cannot be empty'; document.getElementById('pw-err').style.display = 'block'; return; }
+  if (p1 !== p2) { document.getElementById('pw-err').textContent = "Your entries don't match, friend"; document.getElementById('pw-err').style.display = 'block'; return; }
+  adminPw = p1; savePw(); hideChangePw();
+}
+
+// Set freshness
+function showSetFreshness() {
+  document.getElementById('fresh-modal').classList.add('open');
+  document.getElementById('fresh-count').textContent = `Value for ${adminSelected.size} pin${adminSelected.size!==1?'s':''}:`;
+  document.getElementById('fresh-val').value = '';
+}
+function hideSetFreshness() { document.getElementById('fresh-modal').classList.remove('open'); }
+function doSetFreshness() {
+  const v = parseInt(document.getElementById('fresh-val').value);
+  if (isNaN(v) || v < 0) return;
+  const newDate = new Date(Date.now() - v * D).toISOString();
+  pins = pins.map(p => adminSelected.has(p.id) ? { ...p, dateReported: newDate } : p);
+  adminSelected.clear();
+  savePins();
+  hideSetFreshness();
+  renderAdminTable();
+}
+
+// Listen for admin filter changes
+document.getElementById('a-filter-col').addEventListener('change', renderAdminTable);
+document.getElementById('a-filter-val').addEventListener('input', renderAdminTable);
+
+// Listen for search filter machine checkbox styling
+document.getElementById('f-machines').addEventListener('change', function(e) {
+  if (e.target.type === 'checkbox') e.target.parentElement.classList.toggle('on', e.target.checked);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+buildFilterMachines();
+buildReportMachines();
+initMap();
+</script>
+</body>
+</html>
