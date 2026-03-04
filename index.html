@@ -187,6 +187,12 @@
 <!-- SEARCH -->
 <button id="search-toggle" onclick="toggleSearch()">🔍 Search & Filter</button>
 <div id="search-panel">
+  <div class="filter-label">Go to Location</div>
+  <div style="display:flex;gap:6px;margin-bottom:16px;">
+    <input class="filter-input" id="f-location" type="text" placeholder="Address, zip, intersection..." style="flex:1" onkeydown="if(event.key==='Enter'){goToLocation();event.preventDefault();}">
+    <button onclick="goToLocation()" style="padding:7px 12px;border-radius:7px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">Go</button>
+  </div>
+  <div id="loc-error" style="color:#f87171;font-size:12px;margin:-10px 0 12px;display:none;"></div>
   <div class="filter-label">Freshness (days old)</div>
   <div class="filter-row">
     <input class="filter-input" id="f-min" type="number" min="0" placeholder="Min">
@@ -311,8 +317,8 @@ const MACHINERY = ["Bulldozer","Excavator","Backhoe","Front Loader","Bobcat/Skid
 const D = 864e5;
 
 // Supabase config — stored in localStorage after first setup
-let SUPABASE_URL = localStorage.getItem('cnm-sb-url') || 'https://hwgbcxxxgwgyrvmievss.supabase.co';
-let SUPABASE_KEY = localStorage.getItem('cnm-sb-key') || 'sb_publishable_5lnVleWfKoseJ1N50mm4Eg_Hw80Fc0c';
+let SUPABASE_URL = localStorage.getItem('cnm-sb-url') || '';
+let SUPABASE_KEY = localStorage.getItem('cnm-sb-key') || '';
 let useDB = false; // true if connected to Supabase
 
 let pins = [];
@@ -612,10 +618,51 @@ function toggleSearch() {
 function toggleGvFilter() { setTimeout(() => document.getElementById('f-gv').classList.toggle('on', document.getElementById('f-gv-cb').checked), 0); }
 function applyFilters() { renderPins(); }
 function resetFilters() {
+  document.getElementById('f-location').value = '';
+  document.getElementById('loc-error').style.display = 'none';
   document.getElementById('f-min').value = ''; document.getElementById('f-max').value = '30';
   document.getElementById('f-gv-cb').checked = false; document.getElementById('f-gv').classList.remove('on');
   document.querySelectorAll('#f-machines input').forEach(el => { el.checked = false; el.parentElement.classList.remove('on'); });
   renderPins();
+}
+
+async function goToLocation() {
+  const q = document.getElementById('f-location').value.trim();
+  const errEl = document.getElementById('loc-error');
+  errEl.style.display = 'none';
+  if (!q) return;
+
+  // Show loading state
+  const btn = document.querySelector('#search-panel button[onclick="goToLocation()"]');
+  const origText = btn.textContent;
+  btn.textContent = '...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q), {
+      headers: { 'Accept': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.length === 0) {
+      errEl.textContent = "Couldn't find that location. Try a different search.";
+      errEl.style.display = 'block';
+      return;
+    }
+    const lat = parseFloat(data[0].lat);
+    const lon = parseFloat(data[0].lon);
+    // Zoom level based on type: zip codes / cities get less zoom, addresses get more
+    const type = data[0].type || '';
+    let zoom = 15;
+    if (type === 'postcode' || type === 'city' || type === 'administrative') zoom = 13;
+    else if (type === 'state' || type === 'country') zoom = 8;
+    map.setView([lat, lon], zoom);
+  } catch (e) {
+    errEl.textContent = 'Search failed. Check your internet connection.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
 }
 document.getElementById('f-machines').addEventListener('change', e => { if (e.target.type==='checkbox') e.target.parentElement.classList.toggle('on',e.target.checked); });
 
