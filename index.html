@@ -166,7 +166,19 @@
 <!-- HEADER -->
 <div id="header">
   <h1>🚧 Construction Near Me</h1>
+  <button id="about-link" onclick="document.getElementById('about-overlay').classList.add('open')" style="position:absolute;left:14px;background:none;border:none;color:rgba(255,255,255,0.35);font-size:12px;cursor:pointer;font-weight:500;">About</button>
   <button id="admin-link" onclick="showAdminLogin()">admin</button>
+</div>
+
+<!-- ABOUT OVERLAY -->
+<div class="overlay" id="about-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:90%;max-width:400px;text-align:center;padding:36px 32px;">
+    <div style="font-size:48px;margin-bottom:16px;">🚧</div>
+    <h2 style="margin-bottom:16px;">Construction Near Me</h2>
+    <p style="color:#bbb;font-size:15px;line-height:1.7;margin:0;">Because sometimes you just want to watch some big construction trucks do their thing.</p>
+    <p style="color:#999;font-size:14px;margin-top:16px;">This site is the brainchild of <a href="https://linktr.ee/ferociousj" target="_blank" rel="noopener" style="color:#f59e0b;text-decoration:none;font-weight:600;">Jon Sung</a>.</p>
+    <button onclick="document.getElementById('about-overlay').classList.remove('open')" style="margin-top:24px;padding:10px 32px;border-radius:10px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-size:14px;font-weight:700;cursor:pointer;">Close</button>
+  </div>
 </div>
 
 <!-- DB STATUS -->
