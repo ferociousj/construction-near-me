@@ -10,26 +10,27 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a1a; color: #e0e0e0; overflow: hidden; height: 100vh; }
 
-  /* ── Header ─────────────────────────────────────────────── */
   #header { position: fixed; top: 0; left: 0; right: 0; height: 50px; z-index: 1000; background: linear-gradient(180deg, rgba(10,10,26,0.97), rgba(10,10,26,0.8)); display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(255,255,255,0.04); }
   #header h1 { font-size: 18px; color: #f59e0b; font-weight: 700; letter-spacing: 0.4px; text-shadow: 0 0 40px rgba(245,158,11,0.2); }
   #admin-link { position: absolute; right: 14px; background: none; border: none; color: rgba(255,255,255,0.06); font-size: 10px; cursor: pointer; }
 
-  /* ── Map ─────────────────────────────────────────────────── */
+  /* Connection status */
+  #db-status { position: fixed; top: 55px; left: 50%; transform: translateX(-50%); z-index: 1100; padding: 6px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; display: none; }
+  #db-status.error { display: block; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #f87171; }
+  #db-status.offline { display: block; background: rgba(234,179,8,0.15); border: 1px solid rgba(234,179,8,0.3); color: #eab308; }
+  #db-status.ok { display: block; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; }
+
   #map { position: fixed; top: 50px; left: 0; right: 0; bottom: 0; z-index: 1; }
   .leaflet-container { background: #0f1729 !important; }
 
-  /* ── Badge ───────────────────────────────────────────────── */
   #count-badge { position: fixed; top: 60px; right: 14px; z-index: 800; background: rgba(10,18,32,0.9); border-radius: 8px; padding: 5px 13px; color: #888; font-size: 12px; border: 1px solid rgba(255,255,255,0.05); font-weight: 500; }
 
-  /* ── Legend ──────────────────────────────────────────────── */
   #legend { position: fixed; bottom: 20px; left: 20px; z-index: 800; background: rgba(10,18,32,0.9); border-radius: 10px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.05); }
   #legend h4 { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; font-weight: 600; }
   .legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
   .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
   .legend-row span:last-child { font-size: 11px; color: #888; }
 
-  /* ── Search Panel ───────────────────────────────────────── */
   #search-toggle { position: fixed; top: 60px; left: 10px; z-index: 900; background: rgba(10,18,32,0.9); color: #f59e0b; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 15px; font-size: 13px; cursor: pointer; font-weight: 500; }
   #search-toggle.active { color: #888; }
   #search-panel { position: fixed; top: 98px; left: 10px; width: 270px; z-index: 880; background: rgba(16,16,38,0.97); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 18px; max-height: calc(100vh - 118px); overflow-y: auto; box-shadow: 0 16px 50px rgba(0,0,0,0.5); display: none; }
@@ -46,13 +47,11 @@
   .btn-apply { width: 100%; padding: 10px; border-radius: 9px; border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 6px; }
   .btn-reset { width: 100%; padding: 8px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.07); background: transparent; color: #777; font-size: 12px; cursor: pointer; }
 
-  /* ── Report Button ──────────────────────────────────────── */
   #report-btn { position: fixed; bottom: 24px; right: 20px; z-index: 900; border: none; border-radius: 14px; padding: 13px 24px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,0.45); letter-spacing: 0.3px; transition: all 0.2s; }
   #report-btn.normal { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; }
   #report-btn.cancel { background: #dc2626; color: #fff; }
   #placing-hint { position: fixed; bottom: 76px; right: 20px; z-index: 900; background: rgba(10,18,32,0.93); border-radius: 10px; padding: 10px 18px; color: #f59e0b; font-size: 13px; border: 1px solid rgba(245,158,11,0.18); box-shadow: 0 4px 20px rgba(0,0,0,0.4); font-weight: 500; display: none; }
 
-  /* ── Overlays / Modals ──────────────────────────────────── */
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
   .overlay.open { display: flex; }
   .modal { background: linear-gradient(145deg, #161630, #1a1a30); border-radius: 22px; padding: 28px 30px; color: #e0e0e0; border: 1px solid rgba(255,255,255,0.07); box-shadow: 0 30px 80px rgba(0,0,0,0.6); max-height: 85vh; overflow-y: auto; }
@@ -70,7 +69,6 @@
   .btn-cancel { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: transparent; color: #999; font-size: 14px; cursor: pointer; }
   .btn-save { flex: 1; padding: 12px; border-radius: 12px; border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-size: 14px; font-weight: 700; cursor: pointer; }
 
-  /* ── Pin Popup (Leaflet) ────────────────────────────────── */
   .leaflet-popup-content-wrapper { background: linear-gradient(145deg, #161630, #1a1a30) !important; color: #e0e0e0 !important; border-radius: 16px !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 16px 48px rgba(0,0,0,0.5) !important; }
   .leaflet-popup-tip { background: #1a1a30 !important; }
   .leaflet-popup-close-button { color: #666 !important; font-size: 20px !important; }
@@ -86,7 +84,6 @@
   .pin-meta { display: flex; gap: 18px; font-size: 12.5px; color: #999; margin-bottom: 14px; }
   .btn-still { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
 
-  /* ── Admin Page ─────────────────────────────────────────── */
   #admin-page { display: none; position: fixed; inset: 0; z-index: 5000; background: #0a0a1a; overflow-y: auto; padding: 24px; }
   #admin-page.open { display: block; }
   #admin-login { display: none; position: fixed; inset: 0; z-index: 5000; background: #0a0a1a; align-items: center; justify-content: center; }
@@ -125,7 +122,6 @@
   .fresh-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
   .empty-row td { padding: 40px; text-align: center; color: #444; }
 
-  /* Admin modals */
   .admin-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 6000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
   .admin-modal-overlay.open { display: flex; }
   .admin-modal { background: linear-gradient(145deg, #161630, #1a1a30); border-radius: 18px; padding: 28px; border: 1px solid rgba(255,255,255,0.07); box-shadow: 0 24px 70px rgba(0,0,0,0.6); }
@@ -136,9 +132,36 @@
   .admin-modal .btn-row button { flex: 1; padding: 11px; border-radius: 10px; font-size: 14px; cursor: pointer; }
   .admin-modal .btn-row .cancel { border: 1px solid rgba(255,255,255,0.08); background: transparent; color: #999; }
   .admin-modal .btn-row .save { border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 700; }
+
+  /* Setup overlay */
+  #setup-overlay { position: fixed; inset: 0; z-index: 9999; background: #0a0a1a; display: flex; align-items: center; justify-content: center; }
+  #setup-overlay.hidden { display: none; }
+  .setup-box { background: linear-gradient(145deg, #161630, #1a1a30); border-radius: 22px; padding: 36px; width: 440px; max-width: 95%; border: 1px solid rgba(255,255,255,0.07); box-shadow: 0 24px 70px rgba(0,0,0,0.6); }
+  .setup-box h2 { color: #f59e0b; margin: 0 0 6px; font-size: 22px; }
+  .setup-box .desc { color: #777; font-size: 13px; margin: 0 0 24px; line-height: 1.5; }
+  .setup-box label { display: block; font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; font-weight: 600; }
+  .setup-box input { width: 100%; padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.025); color: #e0e0e0; font-size: 14px; outline: none; font-family: monospace; }
+  .setup-box .btn-save { width: 100%; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+  .setup-box .btn-skip { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: transparent; color: #666; font-size: 13px; cursor: pointer; }
+  .setup-box .err { color: #ef4444; font-size: 13px; margin: 0 0 12px; display: none; }
 </style>
 </head>
 <body>
+
+<!-- SETUP OVERLAY (first-time Supabase config) -->
+<div id="setup-overlay">
+  <div class="setup-box">
+    <h2>🚧 Welcome!</h2>
+    <p class="desc">To connect to your shared database, enter your Supabase credentials below. You only need to do this once — they'll be saved in this browser.</p>
+    <label>Supabase URL</label>
+    <input id="setup-url" placeholder="https://abcdefgh.supabase.co">
+    <label>Supabase Anon Key</label>
+    <input id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIs...">
+    <p class="err" id="setup-err"></p>
+    <button class="btn-save" onclick="saveSetup()">Connect to Database</button>
+    <button class="btn-skip" onclick="skipSetup()">Skip — use offline mode</button>
+  </div>
+</div>
 
 <!-- HEADER -->
 <div id="header">
@@ -146,10 +169,11 @@
   <button id="admin-link" onclick="showAdminLogin()">admin</button>
 </div>
 
+<!-- DB STATUS -->
+<div id="db-status"></div>
+
 <!-- MAP -->
 <div id="map"></div>
-
-<!-- COUNT BADGE -->
 <div id="count-badge">0 sites</div>
 
 <!-- LEGEND -->
@@ -160,7 +184,7 @@
   <div class="legend-row"><div class="legend-dot" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.5)"></div><span>> 14 days</span></div>
 </div>
 
-<!-- SEARCH TOGGLE + PANEL -->
+<!-- SEARCH -->
 <button id="search-toggle" onclick="toggleSearch()">🔍 Search & Filter</button>
 <div id="search-panel">
   <div class="filter-label">Freshness (days old)</div>
@@ -177,11 +201,10 @@
   <button class="btn-reset" onclick="resetFilters()">Reset</button>
 </div>
 
-<!-- REPORT BUTTON + HINT -->
+<!-- REPORT -->
 <button id="report-btn" class="normal" onclick="togglePlacing()">📍 Report a Sighting</button>
 <div id="placing-hint">Click the map to place a pin 📍</div>
 
-<!-- REPORT OVERLAY -->
 <div class="overlay" id="report-overlay">
   <div class="modal" style="width:92%;max-width:520px;">
     <h2>Report a Sighting</h2>
@@ -253,13 +276,13 @@
   </div>
 </div>
 
-<!-- ADMIN: Change Password Modal -->
+<!-- ADMIN: Change Password -->
 <div class="admin-modal-overlay" id="pw-modal">
   <div class="admin-modal" style="width:340px">
     <h3>Change Password?</h3>
     <input type="password" id="pw-new1" placeholder="New password">
     <input type="password" id="pw-new2" placeholder="Confirm password">
-    <p class="err" id="pw-err">Your entries don't match, friend</p>
+    <p class="err" id="pw-err"></p>
     <div class="btn-row">
       <button class="cancel" onclick="hideChangePw()">Cancel</button>
       <button class="save" onclick="doChangePw()">Save</button>
@@ -267,7 +290,7 @@
   </div>
 </div>
 
-<!-- ADMIN: Set Freshness Modal -->
+<!-- ADMIN: Set Freshness -->
 <div class="admin-modal-overlay" id="fresh-modal">
   <div class="admin-modal" style="width:300px">
     <h3>Set Freshness</h3>
@@ -282,51 +305,221 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════════════════════
-// DATA & STATE
+// CONFIG & DATA
 // ═══════════════════════════════════════════════════════════════════════════════
-const MACHINERY = [
-  "Bulldozer","Excavator","Backhoe","Front Loader","Bobcat/Skid Steer",
-  "Concrete Mixer","Crane Truck","Construction Crane","Dump Truck",
-  "Concrete Pumper","Wrecking Ball","Asphalt Spreader","Road Grader",
-  "Steamroller","Forklift"
-];
+const MACHINERY = ["Bulldozer","Excavator","Backhoe","Front Loader","Bobcat/Skid Steer","Concrete Mixer","Crane Truck","Construction Crane","Dump Truck","Concrete Pumper","Wrecking Ball","Asphalt Spreader","Road Grader","Steamroller","Forklift"];
 const D = 864e5;
-const SEEDS = [
-  {id:"s1",lat:37.7849,lng:-122.4094,machines:["Excavator","Dump Truck","Construction Crane"],goodView:true,dateReported:new Date(Date.now()-2*D).toISOString(),custom:""},
-  {id:"s2",lat:37.7695,lng:-122.4230,machines:["Bulldozer","Front Loader"],goodView:false,dateReported:new Date(Date.now()-8*D).toISOString(),custom:""},
-  {id:"s3",lat:37.7780,lng:-122.3950,machines:["Concrete Mixer","Concrete Pumper","Crane Truck"],goodView:true,dateReported:new Date(Date.now()-16*D).toISOString(),custom:""},
-  {id:"s4",lat:37.7920,lng:-122.4050,machines:["Steamroller","Asphalt Spreader","Road Grader"],goodView:false,dateReported:new Date(Date.now()-3*D).toISOString(),custom:"Paving machine"},
-  {id:"s5",lat:37.7650,lng:-122.4320,machines:["Wrecking Ball","Excavator"],goodView:true,dateReported:new Date(Date.now()-22*D).toISOString(),custom:""},
-  {id:"s6",lat:37.7810,lng:-122.4150,machines:["Forklift","Bobcat/Skid Steer"],goodView:false,dateReported:new Date(Date.now()-1*D).toISOString(),custom:""},
-  {id:"s7",lat:37.7760,lng:-122.4280,machines:["Construction Crane","Concrete Mixer"],goodView:true,dateReported:new Date(Date.now()-5*D).toISOString(),custom:""},
-  {id:"s8",lat:37.7880,lng:-122.4180,machines:["Backhoe","Dump Truck","Front Loader"],goodView:true,dateReported:new Date(Date.now()-11*D).toISOString(),custom:""},
-];
 
-let pins = JSON.parse(localStorage.getItem('cnm-pins')) || SEEDS;
-let adminPw = localStorage.getItem('cnm-pw') || 'chocolaterain';
+// Supabase config — stored in localStorage after first setup
+let SUPABASE_URL = localStorage.getItem('cnm-sb-url') || '';
+let SUPABASE_KEY = localStorage.getItem('cnm-sb-key') || '';
+let useDB = false; // true if connected to Supabase
+
+let pins = [];
+let adminPw = 'chocolaterain';
 let placing = false;
 let newLatLng = null;
 let map, markers = [];
 let adminSelected = new Set();
 let adminSortCol = 'dateReported', adminSortDir = 'desc';
 
-function savePins() { localStorage.setItem('cnm-pins', JSON.stringify(pins)); }
-function savePw() { localStorage.setItem('cnm-pw', adminPw); }
 function freshness(d) { return Math.floor((Date.now() - new Date(d).getTime()) / D); }
 function pinColor(f) { return f <= 7 ? '#22c55e' : f <= 14 ? '#eab308' : '#ef4444'; }
 function pinLabel(f) { return f <= 7 ? 'Green' : f <= 14 ? 'Yellow' : 'Red'; }
-function uid() { return 'p' + Date.now() + Math.random().toString(36).slice(2,7); }
+
+const SEEDS = [
+  {lat:37.7849,lng:-122.4094,machines:["Excavator","Dump Truck","Construction Crane"],good_view:true,date_reported:new Date(Date.now()-2*D).toISOString(),custom_machine:""},
+  {lat:37.7695,lng:-122.4230,machines:["Bulldozer","Front Loader"],good_view:false,date_reported:new Date(Date.now()-8*D).toISOString(),custom_machine:""},
+  {lat:37.7780,lng:-122.3950,machines:["Concrete Mixer","Concrete Pumper","Crane Truck"],good_view:true,date_reported:new Date(Date.now()-16*D).toISOString(),custom_machine:""},
+  {lat:37.7920,lng:-122.4050,machines:["Steamroller","Asphalt Spreader","Road Grader"],good_view:false,date_reported:new Date(Date.now()-3*D).toISOString(),custom_machine:"Paving machine"},
+  {lat:37.7650,lng:-122.4320,machines:["Wrecking Ball","Excavator"],good_view:true,date_reported:new Date(Date.now()-22*D).toISOString(),custom_machine:""},
+  {lat:37.7810,lng:-122.4150,machines:["Forklift","Bobcat/Skid Steer"],good_view:false,date_reported:new Date(Date.now()-1*D).toISOString(),custom_machine:""},
+  {lat:37.7760,lng:-122.4280,machines:["Construction Crane","Concrete Mixer"],good_view:true,date_reported:new Date(Date.now()-5*D).toISOString(),custom_machine:""},
+  {lat:37.7880,lng:-122.4180,machines:["Backhoe","Dump Truck","Front Loader"],good_view:true,date_reported:new Date(Date.now()-11*D).toISOString(),custom_machine:""},
+];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MAP INIT
+// SUPABASE API HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function sbHeaders() {
+  return { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+}
+
+async function sbFetch(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, { headers: sbHeaders(), ...opts });
+  if (!res.ok) throw new Error('Supabase error: ' + res.status);
+  return res.json();
+}
+
+async function dbLoadPins() {
+  const rows = await sbFetch('pins?select=*&order=date_reported.desc');
+  return rows.map(r => ({
+    id: r.id, lat: r.lat, lng: r.lng,
+    machines: r.machines || [], good_view: r.good_view,
+    date_reported: r.date_reported, custom_machine: r.custom_machine || ''
+  }));
+}
+
+async function dbInsertPin(pin) {
+  const res = await sbFetch('pins', {
+    method: 'POST',
+    body: JSON.stringify({
+      lat: pin.lat, lng: pin.lng, machines: pin.machines,
+      good_view: pin.good_view, date_reported: pin.date_reported,
+      custom_machine: pin.custom_machine
+    })
+  });
+  return res[0];
+}
+
+async function dbUpdatePin(id, updates) {
+  await sbFetch('pins?id=eq.' + id, { method: 'PATCH', body: JSON.stringify(updates) });
+}
+
+async function dbDeletePins(ids) {
+  // Supabase doesn't support IN easily in URL, so delete one by one
+  for (const id of ids) {
+    await sbFetch('pins?id=eq.' + id, { method: 'DELETE' });
+  }
+}
+
+async function dbLoadSettings() {
+  try {
+    const rows = await sbFetch('settings?key=eq.admin_password&select=*');
+    if (rows.length > 0) return rows[0].value;
+    return 'chocolaterain';
+  } catch { return 'chocolaterain'; }
+}
+
+async function dbSaveSettings(key, value) {
+  try {
+    // Upsert
+    await fetch(SUPABASE_URL + '/rest/v1/settings', {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({ key, value })
+    });
+  } catch (e) { console.error('Settings save failed:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOCAL STORAGE FALLBACK
+// ═══════════════════════════════════════════════════════════════════════════════
+function localLoadPins() {
+  const raw = localStorage.getItem('cnm-pins');
+  if (raw) {
+    return JSON.parse(raw).map(p => ({
+      id: p.id, lat: p.lat, lng: p.lng,
+      machines: p.machines || [], good_view: p.goodView ?? p.good_view ?? false,
+      date_reported: p.dateReported ?? p.date_reported, custom_machine: p.custom ?? p.custom_machine ?? ''
+    }));
+  }
+  return SEEDS.map((s, i) => ({ ...s, id: 'seed' + i }));
+}
+function localSavePins() { localStorage.setItem('cnm-pins', JSON.stringify(pins)); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NORMALIZE PIN (unified access regardless of source)
+// ═══════════════════════════════════════════════════════════════════════════════
+function pGoodView(p) { return p.good_view; }
+function pDate(p) { return p.date_reported; }
+function pCustom(p) { return p.custom_machine || ''; }
+function pAllMachines(p) { return [...(p.machines||[]), ...(pCustom(p) ? [pCustom(p)] : [])]; }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SETUP FLOW
+// ═══════════════════════════════════════════════════════════════════════════════
+async function saveSetup() {
+  const url = document.getElementById('setup-url').value.trim().replace(/\/+$/, '');
+  const key = document.getElementById('setup-key').value.trim();
+  if (!url || !key) { showSetupErr('Please enter both URL and key.'); return; }
+
+  // Test connection
+  try {
+    const res = await fetch(url + '/rest/v1/pins?select=count&limit=1', {
+      headers: { 'apikey': key, 'Authorization': 'Bearer ' + key }
+    });
+    if (!res.ok) throw new Error(res.status);
+  } catch (e) {
+    showSetupErr('Could not connect. Check your URL and key. (Error: ' + e.message + ')');
+    return;
+  }
+
+  SUPABASE_URL = url;
+  SUPABASE_KEY = key;
+  localStorage.setItem('cnm-sb-url', url);
+  localStorage.setItem('cnm-sb-key', key);
+  useDB = true;
+  document.getElementById('setup-overlay').classList.add('hidden');
+  await initApp();
+}
+
+function skipSetup() {
+  useDB = false;
+  document.getElementById('setup-overlay').classList.add('hidden');
+  initApp();
+}
+
+function showSetupErr(msg) {
+  const el = document.getElementById('setup-err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function showStatus(msg, cls) {
+  const el = document.getElementById('db-status');
+  el.textContent = msg;
+  el.className = cls;
+  if (cls === 'ok') setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+async function initApp() {
+  if (useDB) {
+    try {
+      showStatus('Connecting to database...', 'ok');
+      pins = await dbLoadPins();
+      adminPw = await dbLoadSettings();
+      showStatus('Connected — ' + pins.length + ' pins loaded', 'ok');
+    } catch (e) {
+      showStatus('Database error — falling back to offline mode', 'error');
+      useDB = false;
+      pins = localLoadPins();
+      adminPw = localStorage.getItem('cnm-pw') || 'chocolaterain';
+    }
+  } else {
+    pins = localLoadPins();
+    adminPw = localStorage.getItem('cnm-pw') || 'chocolaterain';
+    showStatus('Offline mode — pins saved in this browser only', 'offline');
+  }
+  initMap();
+}
+
+function boot() {
+  buildFilterMachines();
+  buildReportMachines();
+
+  // Check if Supabase is already configured
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    useDB = true;
+    document.getElementById('setup-overlay').classList.add('hidden');
+    initApp();
+  }
+  // else: setup overlay is visible, waiting for user input or skip
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAP
 // ═══════════════════════════════════════════════════════════════════════════════
 function initMap() {
+  if (map) { renderPins(); return; }
   map = L.map('map', { zoomControl: false }).setView([37.7749, -122.4194], 13);
   L.control.zoom({ position: 'topright' }).addTo(map);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors', maxZoom: 19,
+    attribution: '© OpenStreetMap', maxZoom: 19
   }).addTo(map);
-
   map.on('click', function(e) {
     if (placing) {
       newLatLng = e.latlng;
@@ -334,17 +527,15 @@ function initMap() {
       openReport();
     }
   });
-
   renderPins();
 }
 
-function makeIcon(color, selected) {
-  const size = selected ? 28 : 20;
+function makeIcon(color, sel) {
+  const s = sel ? 28 : 20;
   return L.divIcon({
     className: 'cnm-pin',
-    html: `<div style="width:${size}px;height:${size}px;background:${color};border:3px solid ${selected?'#fff':'rgba(0,0,0,0.25)'};border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 0 12px ${color}60;cursor:pointer;"></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size/2, size/2],
+    html: `<div style="width:${s}px;height:${s}px;background:${color};border:3px solid ${sel?'#fff':'rgba(0,0,0,0.25)'};border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 0 12px ${color}60;cursor:pointer;"></div>`,
+    iconSize: [s,s], iconAnchor: [s/2,s/2],
   });
 }
 
@@ -353,20 +544,18 @@ function getFilters() {
   const maxD = document.getElementById('f-max').value;
   const gv = document.getElementById('f-gv-cb').checked;
   const mEls = document.querySelectorAll('#f-machines input:checked');
-  const machines = Array.from(mEls).map(el => el.value);
-  return { minDays: minD, maxDays: maxD, goodViewOnly: gv, machines };
+  return { minDays: minD, maxDays: maxD, goodViewOnly: gv, machines: Array.from(mEls).map(e => e.value) };
 }
 
 function filterPins() {
   const f = getFilters();
   return pins.filter(pin => {
-    const fr = freshness(pin.dateReported);
+    const fr = freshness(pDate(pin));
     if (f.maxDays && fr > parseInt(f.maxDays)) return false;
     if (f.minDays && fr < parseInt(f.minDays)) return false;
-    if (f.goodViewOnly && !pin.goodView) return false;
+    if (f.goodViewOnly && !pGoodView(pin)) return false;
     if (f.machines.length > 0) {
-      const pm = [...pin.machines, ...(pin.custom ? [pin.custom] : [])];
-      if (!f.machines.some(m => pm.includes(m))) return false;
+      if (!f.machines.some(m => pAllMachines(pin).includes(m))) return false;
     }
     return true;
   });
@@ -377,142 +566,106 @@ function renderPins() {
   markers = [];
   const filtered = filterPins();
   document.getElementById('count-badge').textContent = filtered.length + ' site' + (filtered.length !== 1 ? 's' : '');
-
   filtered.forEach(pin => {
-    const fr = freshness(pin.dateReported);
-    const color = pinColor(fr);
-    const marker = L.marker([pin.lat, pin.lng], { icon: makeIcon(color, false) }).addTo(map);
+    const fr = freshness(pDate(pin));
+    const marker = L.marker([pin.lat, pin.lng], { icon: makeIcon(pinColor(fr), false) }).addTo(map);
     marker.on('click', () => showPinPopup(pin, marker));
     markers.push(marker);
   });
 }
 
 function showPinPopup(pin, marker) {
-  const fr = freshness(pin.dateReported);
+  const fr = freshness(pDate(pin));
   const color = pinColor(fr);
-  const allM = [...pin.machines, ...(pin.custom ? [pin.custom] : [])];
-  const tagsHtml = allM.map(m => `<span class="tag">${m}</span>`).join('');
-  const html = `
-    <div class="pin-popup">
-      <div class="pin-status">
-        <div class="pin-dot" style="background:${color};box-shadow:0 0 10px ${color}80"></div>
-        <span>${pinLabel(fr)} · ${fr} day${fr!==1?'s':''} old</span>
-      </div>
-      <div class="pin-location">📍 ${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}</div>
-      ${allM.length ? `<div class="pin-machines"><h5>Machinery</h5><div class="tags">${tagsHtml}</div></div>` : ''}
-      <div class="pin-meta">
-        <span>${pin.goodView ? '👁 Good view' : '👁 No view info'}</span>
-        <span>📅 ${new Date(pin.dateReported).toLocaleDateString()}</span>
-      </div>
-      <button class="btn-still" onclick="stillThere('${pin.id}')">Still there? ✓</button>
-    </div>
-  `;
+  const allM = pAllMachines(pin);
+  const tags = allM.map(m => `<span class="tag">${m}</span>`).join('');
+  const html = `<div class="pin-popup">
+    <div class="pin-status"><div class="pin-dot" style="background:${color};box-shadow:0 0 10px ${color}80"></div><span>${pinLabel(fr)} · ${fr} day${fr!==1?'s':''} old</span></div>
+    <div class="pin-location">📍 ${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}</div>
+    ${allM.length ? `<div class="pin-machines"><h5>Machinery</h5><div class="tags">${tags}</div></div>` : ''}
+    <div class="pin-meta"><span>${pGoodView(pin)?'👁 Good view':'👁 No view info'}</span><span>📅 ${new Date(pDate(pin)).toLocaleDateString()}</span></div>
+    <button class="btn-still" onclick="stillThere('${pin.id}')">Still there? ✓</button>
+  </div>`;
   marker.bindPopup(html, { maxWidth: 350, minWidth: 260 }).openPopup();
 }
 
-function stillThere(id) {
-  pins = pins.map(p => p.id === id ? { ...p, dateReported: new Date().toISOString() } : p);
-  savePins();
+async function stillThere(id) {
+  const now = new Date().toISOString();
+  pins = pins.map(p => p.id === id ? { ...p, date_reported: now } : p);
+  if (useDB) { try { await dbUpdatePin(id, { date_reported: now }); } catch(e) { console.error(e); } }
+  else { localSavePins(); }
   map.closePopup();
   renderPins();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SEARCH PANEL
+// SEARCH
 // ═══════════════════════════════════════════════════════════════════════════════
 function buildFilterMachines() {
-  const container = document.getElementById('f-machines');
-  container.innerHTML = MACHINERY.map(m => `
-    <label><input type="checkbox" value="${m}"> ${m}</label>
-  `).join('');
+  document.getElementById('f-machines').innerHTML = MACHINERY.map(m => `<label><input type="checkbox" value="${m}"> ${m}</label>`).join('');
 }
-
 function toggleSearch() {
-  const panel = document.getElementById('search-panel');
-  const btn = document.getElementById('search-toggle');
-  panel.classList.toggle('open');
-  btn.classList.toggle('active');
-  btn.textContent = panel.classList.contains('open') ? '✕ Close' : '🔍 Search & Filter';
+  const p = document.getElementById('search-panel'), b = document.getElementById('search-toggle');
+  p.classList.toggle('open'); b.classList.toggle('active');
+  b.textContent = p.classList.contains('open') ? '✕ Close' : '🔍 Search & Filter';
 }
-
-function toggleGvFilter() {
-  const el = document.getElementById('f-gv');
-  const cb = document.getElementById('f-gv-cb');
-  // checkbox toggles itself, just update class
-  setTimeout(() => el.classList.toggle('on', cb.checked), 0);
-}
-
+function toggleGvFilter() { setTimeout(() => document.getElementById('f-gv').classList.toggle('on', document.getElementById('f-gv-cb').checked), 0); }
 function applyFilters() { renderPins(); }
 function resetFilters() {
-  document.getElementById('f-min').value = '';
-  document.getElementById('f-max').value = '30';
-  document.getElementById('f-gv-cb').checked = false;
-  document.getElementById('f-gv').classList.remove('on');
+  document.getElementById('f-min').value = ''; document.getElementById('f-max').value = '30';
+  document.getElementById('f-gv-cb').checked = false; document.getElementById('f-gv').classList.remove('on');
   document.querySelectorAll('#f-machines input').forEach(el => { el.checked = false; el.parentElement.classList.remove('on'); });
   renderPins();
 }
+document.getElementById('f-machines').addEventListener('change', e => { if (e.target.type==='checkbox') e.target.parentElement.classList.toggle('on',e.target.checked); });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// REPORTING
+// REPORT
 // ═══════════════════════════════════════════════════════════════════════════════
 function buildReportMachines() {
-  document.getElementById('report-machines').innerHTML = MACHINERY.map(m => `
-    <label><input type="checkbox" value="${m}" onchange="this.parentElement.classList.toggle('on',this.checked)"> ${m}</label>
-  `).join('');
+  document.getElementById('report-machines').innerHTML = MACHINERY.map(m => `<label><input type="checkbox" value="${m}" onchange="this.parentElement.classList.toggle('on',this.checked)"> ${m}</label>`).join('');
 }
-
 function togglePlacing() {
   placing = !placing;
-  const btn = document.getElementById('report-btn');
-  const hint = document.getElementById('placing-hint');
-  if (placing) {
-    btn.className = 'cancel'; btn.textContent = '✕ Cancel';
-    hint.style.display = 'block';
-    document.getElementById('map').style.cursor = 'crosshair';
-  } else {
-    btn.className = 'normal'; btn.textContent = '📍 Report a Sighting';
-    hint.style.display = 'none';
-    document.getElementById('map').style.cursor = '';
-    closeReport();
-  }
+  const btn = document.getElementById('report-btn'), hint = document.getElementById('placing-hint');
+  if (placing) { btn.className = 'cancel'; btn.textContent = '✕ Cancel'; hint.style.display = 'block'; }
+  else { btn.className = 'normal'; btn.textContent = '📍 Report a Sighting'; hint.style.display = 'none'; closeReport(); }
 }
-
-function openReport() {
-  document.getElementById('report-overlay').classList.add('open');
-  document.getElementById('placing-hint').style.display = 'none';
-}
-
+function openReport() { document.getElementById('report-overlay').classList.add('open'); document.getElementById('placing-hint').style.display = 'none'; }
 function closeReport() {
   document.getElementById('report-overlay').classList.remove('open');
-  document.querySelectorAll('#report-machines input').forEach(el => { el.checked = false; el.parentElement.classList.remove('on'); });
-  document.getElementById('report-custom').value = '';
-  document.getElementById('report-gv-cb').checked = false;
-  document.getElementById('report-gv').classList.remove('on');
-  newLatLng = null;
+  document.querySelectorAll('#report-machines input').forEach(el => { el.checked=false; el.parentElement.classList.remove('on'); });
+  document.getElementById('report-custom').value = ''; document.getElementById('report-gv-cb').checked = false;
+  document.getElementById('report-gv').classList.remove('on'); newLatLng = null;
 }
+function toggleReportGv() { setTimeout(() => document.getElementById('report-gv').classList.toggle('on', document.getElementById('report-gv-cb').checked), 0); }
 
-function toggleReportGv() {
-  setTimeout(() => {
-    const cb = document.getElementById('report-gv-cb');
-    document.getElementById('report-gv').classList.toggle('on', cb.checked);
-  }, 0);
-}
-
-function saveReport() {
+async function saveReport() {
   if (!newLatLng) return;
-  const machines = Array.from(document.querySelectorAll('#report-machines input:checked')).map(el => el.value);
+  const machines = Array.from(document.querySelectorAll('#report-machines input:checked')).map(e=>e.value);
   const custom = document.getElementById('report-custom').value.trim();
   const goodView = document.getElementById('report-gv-cb').checked;
-  pins.push({
-    id: uid(), lat: newLatLng.lat, lng: newLatLng.lng,
-    machines, custom, goodView, dateReported: new Date().toISOString(),
-  });
-  savePins();
+  const pin = { lat: newLatLng.lat, lng: newLatLng.lng, machines, good_view: goodView, date_reported: new Date().toISOString(), custom_machine: custom };
+
+  if (useDB) {
+    try {
+      const saved = await dbInsertPin(pin);
+      pin.id = saved.id;
+    } catch(e) {
+      console.error(e);
+      pin.id = 'local_' + Date.now();
+      showStatus('Save failed — pin saved locally only', 'error');
+    }
+  } else {
+    pin.id = 'local_' + Date.now();
+  }
+
+  pins.push(pin);
+  if (!useDB) localSavePins();
   closeReport();
   placing = false;
   document.getElementById('report-btn').className = 'normal';
   document.getElementById('report-btn').textContent = '📍 Report a Sighting';
-  document.getElementById('map').style.cursor = '';
   renderPins();
 }
 
@@ -527,23 +680,12 @@ function showAdminLogin() {
   setTimeout(() => document.getElementById('admin-pw-input').focus(), 100);
 }
 function hideAdminLogin() { document.getElementById('admin-login').classList.remove('open'); }
-
 function tryAdminLogin() {
-  const val = document.getElementById('admin-pw-input').value;
-  if (val === adminPw) {
-    hideAdminLogin();
-    showAdmin();
-  } else {
-    document.getElementById('admin-pw-input').classList.add('error');
-    document.getElementById('admin-login-err').style.display = 'block';
-  }
+  if (document.getElementById('admin-pw-input').value === adminPw) { hideAdminLogin(); showAdmin(); }
+  else { document.getElementById('admin-pw-input').classList.add('error'); document.getElementById('admin-login-err').style.display='block'; }
 }
 
-function showAdmin() {
-  adminSelected = new Set();
-  document.getElementById('admin-page').classList.add('open');
-  renderAdminTable();
-}
+function showAdmin() { adminSelected = new Set(); document.getElementById('admin-page').classList.add('open'); renderAdminTable(); }
 function hideAdmin() { document.getElementById('admin-page').classList.remove('open'); renderPins(); }
 
 function adminFilteredPins() {
@@ -551,12 +693,11 @@ function adminFilteredPins() {
   const val = document.getElementById('a-filter-val').value.toLowerCase().trim();
   if (col === 'none' || !val) return [...pins];
   return pins.filter(pin => {
-    if (col === 'goodView') return pin.goodView === (val === 'yes' || val === 'true');
-    if (col === 'freshness') return freshness(pin.dateReported) >= parseInt(val);
+    if (col === 'goodView') return pGoodView(pin) === (val==='yes'||val==='true');
+    if (col === 'freshness') return freshness(pDate(pin)) >= parseInt(val);
     if (col === 'machines') {
-      const terms = val.split(',').map(t => t.trim());
-      const pm = [...pin.machines, ...(pin.custom ? [pin.custom] : [])].map(m => m.toLowerCase());
-      return terms.every(t => pm.some(m => m.includes(t)));
+      const ts = val.split(',').map(t=>t.trim());
+      return ts.every(t => pAllMachines(pin).map(m=>m.toLowerCase()).some(m=>m.includes(t)));
     }
     return true;
   });
@@ -564,44 +705,40 @@ function adminFilteredPins() {
 
 function adminSortedPins() {
   const list = adminFilteredPins();
-  list.sort((a, b) => {
-    let av, bv;
-    if (adminSortCol === 'freshness') { av = freshness(a.dateReported); bv = freshness(b.dateReported); }
-    else if (adminSortCol === 'dateReported') { av = new Date(a.dateReported).getTime(); bv = new Date(b.dateReported).getTime(); }
-    else if (adminSortCol === 'goodView') { av = a.goodView ? 1 : 0; bv = b.goodView ? 1 : 0; }
-    else if (adminSortCol === 'location') { av = a.lat; bv = b.lat; }
-    else { av = a.machines.length; bv = b.machines.length; }
-    return adminSortDir === 'asc' ? av - bv : bv - av;
+  list.sort((a,b) => {
+    let av,bv;
+    if (adminSortCol==='freshness'){av=freshness(pDate(a));bv=freshness(pDate(b));}
+    else if(adminSortCol==='dateReported'){av=new Date(pDate(a)).getTime();bv=new Date(pDate(b)).getTime();}
+    else if(adminSortCol==='goodView'){av=pGoodView(a)?1:0;bv=pGoodView(b)?1:0;}
+    else if(adminSortCol==='location'){av=a.lat;bv=b.lat;}
+    else{av=a.machines.length;bv=b.machines.length;}
+    return adminSortDir==='asc'?av-bv:bv-av;
   });
   return list;
 }
 
 function adminSort(col) {
-  if (adminSortCol === col) adminSortDir = adminSortDir === 'asc' ? 'desc' : 'asc';
-  else { adminSortCol = col; adminSortDir = 'asc'; }
+  if(adminSortCol===col) adminSortDir=adminSortDir==='asc'?'desc':'asc';
+  else{adminSortCol=col;adminSortDir='asc';}
   renderAdminTable();
 }
 
 function renderAdminTable() {
   const sorted = adminSortedPins();
-  document.getElementById('admin-count').textContent = pins.length + ' total pins · ' + sorted.length + ' shown';
+  document.getElementById('admin-count').textContent = pins.length + ' total · ' + sorted.length + ' shown' + (useDB ? ' (database)' : ' (offline)');
   const tbody = document.getElementById('admin-tbody');
-  if (sorted.length === 0) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No pins match the current filter.</td></tr>';
-  } else {
+  if (!sorted.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No pins match.</td></tr>'; }
+  else {
     tbody.innerHTML = sorted.map(pin => {
-      const f = freshness(pin.dateReported);
-      const c = pinColor(f);
-      const allM = [...pin.machines, ...(pin.custom ? [pin.custom] : [])];
-      const tags = allM.map(m => `<span class="tag-sm">${m}</span>`).join('');
-      const checked = adminSelected.has(pin.id) ? 'checked' : '';
-      const cls = adminSelected.has(pin.id) ? 'selected' : '';
+      const f=freshness(pDate(pin)), c=pinColor(f);
+      const tags = pAllMachines(pin).map(m=>`<span class="tag-sm">${m}</span>`).join('');
+      const chk = adminSelected.has(pin.id)?'checked':'', cls = adminSelected.has(pin.id)?'selected':'';
       return `<tr class="${cls}">
-        <td><input type="checkbox" ${checked} onchange="adminToggleRow('${pin.id}',this.checked)"></td>
+        <td><input type="checkbox" ${chk} onchange="adminToggleRow('${pin.id}',this.checked)"></td>
         <td style="color:#bbb;white-space:nowrap;font-variant-numeric:tabular-nums">${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}</td>
         <td>${tags}</td>
-        <td style="color:${pin.goodView?'#22c55e':'#555'};font-weight:500">${pin.goodView?'Yes':'No'}</td>
-        <td style="color:#999">${new Date(pin.dateReported).toLocaleDateString()}</td>
+        <td style="color:${pGoodView(pin)?'#22c55e':'#555'};font-weight:500">${pGoodView(pin)?'Yes':'No'}</td>
+        <td style="color:#999">${new Date(pDate(pin)).toLocaleDateString()}</td>
         <td><span class="fresh-dot" style="background:${c};box-shadow:0 0 6px ${c}50"></span>${f}d</td>
       </tr>`;
     }).join('');
@@ -609,77 +746,63 @@ function renderAdminTable() {
   updateAdminButtons();
 }
 
-function adminToggleRow(id, checked) {
-  if (checked) adminSelected.add(id); else adminSelected.delete(id);
-  renderAdminTable();
-}
-function adminToggleAll(checked) {
-  const sorted = adminSortedPins();
-  if (checked) sorted.forEach(p => adminSelected.add(p.id)); else adminSelected.clear();
-  renderAdminTable();
-}
-function adminSelectAll() { adminSortedPins().forEach(p => adminSelected.add(p.id)); renderAdminTable(); }
+function adminToggleRow(id,checked) { if(checked)adminSelected.add(id);else adminSelected.delete(id); renderAdminTable(); }
+function adminToggleAll(checked) { if(checked)adminSortedPins().forEach(p=>adminSelected.add(p.id));else adminSelected.clear(); renderAdminTable(); }
+function adminSelectAll() { adminSortedPins().forEach(p=>adminSelected.add(p.id)); renderAdminTable(); }
 function adminDeselectAll() { adminSelected.clear(); renderAdminTable(); }
-
 function updateAdminButtons() {
   const n = adminSelected.size;
-  document.getElementById('a-del-btn').disabled = n === 0;
+  document.getElementById('a-del-btn').disabled = n===0;
   document.getElementById('a-del-btn').textContent = `Delete (${n})`;
-  document.getElementById('a-fresh-btn').disabled = n === 0;
-  document.getElementById('a-check-all').checked = adminSortedPins().length > 0 && n === adminSortedPins().length;
+  document.getElementById('a-fresh-btn').disabled = n===0;
+  document.getElementById('a-check-all').checked = adminSortedPins().length>0 && n===adminSortedPins().length;
 }
 
-function adminDelete() {
+async function adminDelete() {
+  const ids = Array.from(adminSelected);
+  if (useDB) { try { await dbDeletePins(ids); } catch(e) { console.error(e); showStatus('Delete failed','error'); } }
   pins = pins.filter(p => !adminSelected.has(p.id));
   adminSelected.clear();
-  savePins();
+  if (!useDB) localSavePins();
   renderAdminTable();
 }
 
 // Change password
 function showChangePw() { document.getElementById('pw-modal').classList.add('open'); document.getElementById('pw-new1').value=''; document.getElementById('pw-new2').value=''; document.getElementById('pw-err').style.display='none'; }
 function hideChangePw() { document.getElementById('pw-modal').classList.remove('open'); }
-function doChangePw() {
-  const p1 = document.getElementById('pw-new1').value;
-  const p2 = document.getElementById('pw-new2').value;
-  if (!p1) { document.getElementById('pw-err').textContent = 'Password cannot be empty'; document.getElementById('pw-err').style.display = 'block'; return; }
-  if (p1 !== p2) { document.getElementById('pw-err').textContent = "Your entries don't match, friend"; document.getElementById('pw-err').style.display = 'block'; return; }
-  adminPw = p1; savePw(); hideChangePw();
+async function doChangePw() {
+  const p1=document.getElementById('pw-new1').value, p2=document.getElementById('pw-new2').value;
+  if(!p1){ document.getElementById('pw-err').textContent='Password cannot be empty'; document.getElementById('pw-err').style.display='block'; return; }
+  if(p1!==p2){ document.getElementById('pw-err').textContent="Your entries don't match, friend"; document.getElementById('pw-err').style.display='block'; return; }
+  adminPw = p1;
+  if (useDB) { try { await dbSaveSettings('admin_password', p1); } catch(e) { console.error(e); } }
+  else { localStorage.setItem('cnm-pw', p1); }
+  hideChangePw();
 }
 
 // Set freshness
-function showSetFreshness() {
-  document.getElementById('fresh-modal').classList.add('open');
-  document.getElementById('fresh-count').textContent = `Value for ${adminSelected.size} pin${adminSelected.size!==1?'s':''}:`;
-  document.getElementById('fresh-val').value = '';
-}
+function showSetFreshness() { document.getElementById('fresh-modal').classList.add('open'); document.getElementById('fresh-count').textContent=`Value for ${adminSelected.size} pin${adminSelected.size!==1?'s':''}:`; document.getElementById('fresh-val').value=''; }
 function hideSetFreshness() { document.getElementById('fresh-modal').classList.remove('open'); }
-function doSetFreshness() {
+async function doSetFreshness() {
   const v = parseInt(document.getElementById('fresh-val').value);
-  if (isNaN(v) || v < 0) return;
-  const newDate = new Date(Date.now() - v * D).toISOString();
-  pins = pins.map(p => adminSelected.has(p.id) ? { ...p, dateReported: newDate } : p);
+  if(isNaN(v)||v<0) return;
+  const newDate = new Date(Date.now()-v*D).toISOString();
+  const ids = Array.from(adminSelected);
+  pins = pins.map(p => ids.includes(p.id) ? { ...p, date_reported: newDate } : p);
+  if (useDB) { for (const id of ids) { try { await dbUpdatePin(id, { date_reported: newDate }); } catch(e) { console.error(e); } } }
+  else { localSavePins(); }
   adminSelected.clear();
-  savePins();
   hideSetFreshness();
   renderAdminTable();
 }
 
-// Listen for admin filter changes
 document.getElementById('a-filter-col').addEventListener('change', renderAdminTable);
 document.getElementById('a-filter-val').addEventListener('input', renderAdminTable);
 
-// Listen for search filter machine checkbox styling
-document.getElementById('f-machines').addEventListener('change', function(e) {
-  if (e.target.type === 'checkbox') e.target.parentElement.classList.toggle('on', e.target.checked);
-});
-
 // ═══════════════════════════════════════════════════════════════════════════════
-// INIT
+// BOOT
 // ═══════════════════════════════════════════════════════════════════════════════
-buildFilterMachines();
-buildReportMachines();
-initMap();
+boot();
 </script>
 </body>
 </html>
