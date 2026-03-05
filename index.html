@@ -329,8 +329,14 @@ const MACHINERY = ["Bulldozer","Excavator","Backhoe","Front Loader","Bobcat/Skid
 const D = 864e5;
 
 // Supabase config — stored in localStorage after first setup
-let SUPABASE_URL = localStorage.getItem('cnm-sb-url') || '';
-let SUPABASE_KEY = localStorage.getItem('cnm-sb-key') || '';
+// ── HARDCODE YOUR SUPABASE CREDENTIALS HERE (between the quotes) ──
+// If these are filled in, the setup screen will never appear.
+const HARDCODED_URL = '';
+const HARDCODED_KEY = '';
+// ── END CREDENTIALS ───────────────────────────────────────────────
+
+let SUPABASE_URL = localStorage.getItem('cnm-sb-url') || HARDCODED_URL || '';
+let SUPABASE_KEY = localStorage.getItem('cnm-sb-key') || HARDCODED_KEY || '';
 let useDB = false; // true if connected to Supabase
 
 let pins = [];
@@ -519,13 +525,16 @@ function boot() {
   buildFilterMachines();
   buildReportMachines();
 
-  // Check if Supabase is already configured
-  if (SUPABASE_URL && SUPABASE_KEY) {
+  // Use credentials from any source: localStorage or hardcoded
+  SUPABASE_URL = (localStorage.getItem('cnm-sb-url') || HARDCODED_URL || '').trim();
+  SUPABASE_KEY = (localStorage.getItem('cnm-sb-key') || HARDCODED_KEY || '').trim();
+
+  if (SUPABASE_URL.length > 0 && SUPABASE_KEY.length > 0) {
     useDB = true;
     document.getElementById('setup-overlay').classList.add('hidden');
     initApp();
   }
-  // else: setup overlay is visible, waiting for user input or skip
+  // else: setup overlay stays visible, waiting for user input or skip
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
