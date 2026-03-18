@@ -232,11 +232,6 @@
       <option value="seattle">Seattle</option>
       <option value="austin">Austin</option>
       <option value="sandiego">San Diego County</option>
-      <option value="nashville">Nashville</option>
-      <option value="minneapolis">Minneapolis</option>
-      <option value="honolulu">Honolulu</option>
-      <option value="miami">Miami-Dade</option>
-      <option value="philly">Philadelphia</option>
     </select>
   </div>
   <div style="margin-bottom:10px;">
@@ -368,8 +363,8 @@ const D = 864e5;
 // Supabase config — stored in localStorage after first setup
 // ── HARDCODE YOUR SUPABASE CREDENTIALS HERE (between the quotes) ──
 // If these are filled in, the setup screen will never appear.
-const HARDCODED_URL = '';
-const HARDCODED_KEY = '';
+const HARDCODED_URL = 'https://hwgbcxxxgwgyrvmievss.supabase.co';
+const HARDCODED_KEY = 'sb_publishable_5lnVleWfKoseJ1N50mm4Eg_Hw80Fc0c';
 // ── END CREDENTIALS ───────────────────────────────────────────────
 
 let SUPABASE_URL = localStorage.getItem('cnm-sb-url') || HARDCODED_URL || '';
@@ -805,125 +800,25 @@ const CITY_CONFIGS = {
     costField: 'valuation',
     costIsText: true,
     statusFilter: null,
-    dateField: 'issue_date',
-    locationMode: 'latlong',
-    latField: 'latitude', lngField: 'longitude',
-    select: 'permit_number,permit_type,permit_sub_type,description,issue_date,valuation,address,latitude,longitude',
-    parse: d => ({
-      permit_number: d.permit_number || '',
-      type: [d.permit_type, d.permit_sub_type].filter(Boolean).join(' - '),
-      address: d.address || '',
-      description: (d.description || '').slice(0, 200),
-      issued_date: d.issue_date || '',
-      cost: d.valuation ? parseInt(d.valuation) : 0,
-      neighborhood: '',
-    }),
-  },
-  nashville: {
-    name: 'Nashville',
-    center: [36.1627, -86.7816],
-    api: 'https://data.nashville.gov/resource/3h5w-q8b7.json',
-    costField: 'const_cost',
-    costIsText: true,
-    statusFilter: null,
-    dateField: 'date_issued',
-    locationMode: 'latlong',
-    latField: 'latitude', lngField: 'longitude',
-    select: 'permit_number,permit_type,permit_sub_type,purpose,date_issued,const_cost,address,city,latitude,longitude',
-    parse: d => ({
-      permit_number: d.permit_number || '',
-      type: [d.permit_type, d.permit_sub_type].filter(Boolean).join(' - '),
-      address: [d.address, d.city].filter(Boolean).join(', '),
-      description: (d.purpose || '').slice(0, 200),
-      issued_date: d.date_issued || '',
-      cost: d.const_cost ? parseInt(d.const_cost) : 0,
-      neighborhood: '',
-    }),
-  },
-  minneapolis: {
-    name: 'Minneapolis',
-    center: [44.9778, -93.2650],
-    api: 'https://opendata.minneapolismn.gov/resource/hfya-jkhs.json',
-    costField: 'valuation',
-    costIsText: true,
-    statusFilter: null,
     dateField: 'issued_date',
-    locationMode: 'latlong',
-    latField: 'latitude', lngField: 'longitude',
-    select: 'permit_number,permit_type,description,issued_date,valuation,address,latitude,longitude',
+    locationMode: 'object',
+    locationField: 'geocoded_column',
+    select: 'record_id,record_type,record_subtype,record_category,use,issued_date,valuation,full_address,geocoded_column,city',
     parse: d => ({
-      permit_number: d.permit_number || '',
-      type: d.permit_type || 'Unknown',
-      address: d.address || '',
-      description: (d.description || '').slice(0, 200),
+      permit_number: d.record_id || '',
+      type: [d.record_type, d.record_subtype].filter(Boolean).join(' - '),
+      address: d.full_address || '',
+      description: (d.use || '').slice(0, 200),
       issued_date: d.issued_date || '',
       cost: d.valuation ? parseInt(d.valuation) : 0,
-      neighborhood: '',
+      neighborhood: d.city || '',
     }),
   },
-  honolulu: {
-    name: 'Honolulu',
-    center: [21.3069, -157.8583],
-    api: 'https://data.honolulu.gov/resource/mhcf-stc5.json',
-    costField: 'est_value',
-    costIsText: true,
-    statusFilter: null,
-    dateField: 'issue_date',
-    locationMode: 'latlong',
-    latField: 'latitude', lngField: 'longitude',
-    select: 'permit_number,permit_type,description,issue_date,est_value,address,latitude,longitude',
-    parse: d => ({
-      permit_number: d.permit_number || '',
-      type: d.permit_type || 'Unknown',
-      address: d.address || '',
-      description: (d.description || '').slice(0, 200),
-      issued_date: d.issue_date || '',
-      cost: d.est_value ? parseInt(d.est_value) : 0,
-      neighborhood: '',
-    }),
-  },
-  miami: {
-    name: 'Miami-Dade',
-    center: [25.7617, -80.1918],
-    api: 'https://datahub-miamidade.opendata.arcgis.com/resource/quft-sxph.json',
-    costField: 'total_value',
-    costIsText: true,
-    statusFilter: null,
-    dateField: 'issue_date',
-    locationMode: 'latlong',
-    latField: 'latitude', lngField: 'longitude',
-    select: 'permit_number,permit_type,description,issue_date,total_value,address,latitude,longitude',
-    parse: d => ({
-      permit_number: d.permit_number || '',
-      type: d.permit_type || 'Unknown',
-      address: d.address || '',
-      description: (d.description || '').slice(0, 200),
-      issued_date: d.issue_date || '',
-      cost: d.total_value ? parseInt(d.total_value) : 0,
-      neighborhood: '',
-    }),
-  },
-  philly: {
-    name: 'Philadelphia',
-    center: [39.9526, -75.1652],
-    api: 'https://data.phila.gov/resource/ds7g-p84b.json',
-    costField: null,
-    costIsText: false,
-    statusFilter: null,
-    dateField: 'permitissuedate',
-    locationMode: 'latlong',
-    latField: 'lat', lngField: 'lng',
-    select: 'permitnumber,permittype,permitdescription,permitissuedate,address,status,lat,lng',
-    parse: d => ({
-      permit_number: d.permitnumber || '',
-      type: d.permittype || 'Unknown',
-      address: d.address || '',
-      description: (d.permitdescription || '').slice(0, 200),
-      issued_date: d.permitissuedate || '',
-      cost: 0,
-      neighborhood: '',
-    }),
-  },
+  // Nashville removed: data.nashville.gov blocks browser requests (CORS)
+  // Minneapolis removed: opendata.minneapolismn.gov blocks browser requests (CORS)
+  // Honolulu removed: dataset ID mhcf-stc5 not found (404)
+  // Miami-Dade removed: ArcGIS Hub endpoint blocks browser requests (CORS)
+  // Philadelphia removed: dataset ds7g-p84b is business certifications, not permits; correct permit dataset needs research
   // DC removed: opendata.dc.gov blocks browser requests (CORS)
   // Portland removed: ArcGIS endpoint returned 404 — service URL has changed
   // Boston: uses CKAN (not Socrata) — would need different query format
@@ -1519,6 +1414,9 @@ async function runDebug() {
     // Test 3: Check if date field exists
     log('');
     log('TEST 3: Date field check');
+    if (!config.dateField) {
+      log('  (no date field configured — will order by :id)');
+    } else {
     try {
       const res = await fetch(config.api + '?$select=' + config.dateField + '&$limit=1&$order=' + config.dateField + '%20DESC');
       log('  Date field "' + config.dateField + '": HTTP ' + res.status);
@@ -1531,6 +1429,7 @@ async function runDebug() {
         log('  ERROR: ' + err.slice(0, 300));
       }
     } catch (e) { log('  FETCH ERROR: ' + e.message); }
+    } // end dateField check
 
     // Test 4: Check if cost field exists and its type
     log('');
@@ -1611,12 +1510,13 @@ async function runDebug() {
     const sixMonthsAgo = new Date(Date.now() - 180 * 864e5).toISOString().split('T')[0];
     let whereParts = [];
     if (config.statusFilter) whereParts.push(config.statusFilter);
-    whereParts.push(config.dateField + ">'" + sixMonthsAgo + "'");
+    if (config.dateField) whereParts.push(config.dateField + ">'" + sixMonthsAgo + "'");
     if (config.locationMode === 'object') whereParts.push((config.locationField || 'location') + ' IS NOT NULL');
     else whereParts.push(config.latField + ' IS NOT NULL');
 
     const where = encodeURIComponent(whereParts.join(' AND '));
-    const order = encodeURIComponent(config.dateField + ' DESC');
+    const orderField = config.dateField || ':id';
+    const order = encodeURIComponent(orderField + ' DESC');
     const url = config.api + '?$where=' + where + '&$order=' + order + '&$limit=5&$select=' + config.select;
     log('  URL: ' + decodeURIComponent(url));
     try {
