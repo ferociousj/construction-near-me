@@ -673,10 +673,10 @@ const CITY_CONFIGS = {
     center: [37.7749, -122.4194],
     api: 'https://data.sfgov.org/resource/i98e-djp9.json',
     costField: 'estimated_cost',
-    costIsText: true, // needs ::number cast
+    costIsText: true,
     statusFilter: "status='issued'",
     dateField: 'issued_date',
-    locationMode: 'object', // location field is an object
+    locationMode: 'object',
     select: 'permit_number,permit_type_definition,street_number,street_name,street_suffix,description,issued_date,estimated_cost,location,neighborhoods_analysis_boundaries',
     parse: d => ({
       permit_number: d.permit_number || '',
@@ -692,20 +692,20 @@ const CITY_CONFIGS = {
     name: 'Chicago',
     center: [41.8781, -87.6298],
     api: 'https://data.cityofchicago.org/resource/ydr8-5enu.json',
-    costField: 'reported_cost',
+    costField: 'total_fee',
     costIsText: true,
-    statusFilter: null, // Chicago doesn't have a simple status field for issued
+    statusFilter: "permit_status='ACTIVE'",
     dateField: 'issue_date',
-    locationMode: 'latlong', // separate latitude/longitude fields
+    locationMode: 'latlong',
     latField: 'latitude', lngField: 'longitude',
-    select: 'id,permit_type,work_description,issue_date,reported_cost,street_number,street_direction,street_name,suffix,latitude,longitude,community_area',
+    select: 'id,permit_type,work_description,issue_date,total_fee,street_number,street_direction,street_name,latitude,longitude,community_area',
     parse: d => ({
       permit_number: d.id || '',
       type: d.permit_type || 'Unknown',
-      address: [d.street_number, d.street_direction, d.street_name, d.suffix].filter(Boolean).join(' '),
+      address: [d.street_number, d.street_direction, d.street_name].filter(Boolean).join(' '),
       description: (d.work_description || '').slice(0, 200),
       issued_date: d.issue_date || '',
-      cost: d.reported_cost ? parseInt(d.reported_cost) : 0,
+      cost: d.total_fee ? parseInt(d.total_fee) : 0,
       neighborhood: d.community_area ? 'Community Area ' + d.community_area : '',
     }),
   },
@@ -713,17 +713,17 @@ const CITY_CONFIGS = {
     name: 'New York City',
     center: [40.7128, -74.0060],
     api: 'https://data.cityofnewyork.us/resource/ipu4-2q9a.json',
-    costField: null, // NYC permit issuance doesn't have a cost field in this dataset
+    costField: null,
     costIsText: false,
     statusFilter: "permit_status='ISSUED'",
     dateField: 'issuance_date',
     locationMode: 'latlong',
-    latField: 'gis_latitude', lngField: 'gis_longitude',
-    select: 'job_num,permit_type,permit_subtype,work_type,issuance_date,job_start_date,house_no,street_name,borough,gis_latitude,gis_longitude',
+    latField: 'latitude', lngField: 'longitude',
+    select: 'borough,house__,street_name,job_type,work_type,permit_status,permit_type,issuance_date,latitude,longitude',
     parse: d => ({
-      permit_number: d.job_num || '',
-      type: [d.permit_type, d.permit_subtype, d.work_type].filter(Boolean).join(' - '),
-      address: [d.house_no, d.street_name].filter(Boolean).join(' '),
+      permit_number: d.house__ || '',
+      type: [d.job_type, d.work_type, d.permit_type].filter(Boolean).join(' - '),
+      address: [d.house__, d.street_name].filter(Boolean).join(' '),
       description: '',
       issued_date: d.issuance_date || '',
       cost: 0,
@@ -736,40 +736,40 @@ const CITY_CONFIGS = {
     api: 'https://data.lacity.org/resource/bi25-emib.json',
     costField: 'valuation',
     costIsText: true,
-    statusFilter: "status='Permit Issued'",
+    statusFilter: "latest_status='Permit Issued'",
     dateField: 'issue_date',
     locationMode: 'latlong',
     latField: 'latitude', lngField: 'longitude',
-    select: 'permit_nbr,permit_type,permit_sub_type,work_description,issue_date,valuation,address,latitude,longitude,community_plan_area',
+    select: 'pcis_permit,permit_type,permit_sub_type,work_description,issue_date,valuation,address,latitude,longitude',
     parse: d => ({
-      permit_number: d.permit_nbr || '',
+      permit_number: d.pcis_permit || '',
       type: [d.permit_type, d.permit_sub_type].filter(Boolean).join(' - '),
       address: d.address || '',
       description: (d.work_description || '').slice(0, 200),
       issued_date: d.issue_date || '',
       cost: d.valuation ? parseInt(d.valuation) : 0,
-      neighborhood: d.community_plan_area || '',
+      neighborhood: '',
     }),
   },
   seattle: {
     name: 'Seattle',
     center: [47.6062, -122.3321],
     api: 'https://data.seattle.gov/resource/76t5-zqzr.json',
-    costField: 'value',
+    costField: 'estprojectcost',
     costIsText: true,
-    statusFilter: "status_current='Permit Issued'",
-    dateField: 'issue_date',
+    statusFilter: null, // Seattle uses various status values; we filter by issueddate existing
+    dateField: 'issueddate',
     locationMode: 'latlong',
     latField: 'latitude', lngField: 'longitude',
-    select: 'application_permit_number,permit_type,description,issue_date,value,address,latitude,longitude,neighborhood',
+    select: 'permitnum,permitclass,permittypedesc,description,estprojectcost,issueddate,originaladdress1,latitude,longitude',
     parse: d => ({
-      permit_number: d.application_permit_number || '',
-      type: d.permit_type || 'Unknown',
-      address: d.address || '',
+      permit_number: d.permitnum || '',
+      type: [d.permitclass, d.permittypedesc].filter(Boolean).join(' - '),
+      address: d.originaladdress1 || '',
       description: (d.description || '').slice(0, 200),
-      issued_date: d.issue_date || '',
-      cost: d.value ? parseInt(d.value) : 0,
-      neighborhood: d.neighborhood || '',
+      issued_date: d.issueddate || '',
+      cost: d.estprojectcost ? parseInt(d.estprojectcost) : 0,
+      neighborhood: '',
     }),
   },
   austin: {
@@ -818,7 +818,7 @@ const CITY_CONFIGS = {
     name: 'Portland',
     center: [45.5152, -122.6784],
     api: 'https://www.portlandmaps.com/arcgis/rest/services/Public/COP_OpenData_Development/MapServer/5/query',
-    isArcGIS: true, // Different API format
+    isArcGIS: true,
     parse: d => ({
       permit_number: d.CaseNumber || '',
       type: d.CaseType || 'Unknown',
@@ -899,38 +899,61 @@ async function loadPermitData() {
       const sixMonthsAgo = new Date(Date.now() - 180 * 864e5).toISOString().split('T')[0];
       const costThreshold = sliderToCost(parseInt(document.getElementById('f-cost')?.value || '770'));
 
-      let whereParts = [];
-      if (config.statusFilter) whereParts.push(config.statusFilter);
-      whereParts.push(config.dateField + ">'" + sixMonthsAgo + "'");
+      // Try query with cost filter, fall back without cast or without cost filter if it fails
+      async function tryQuery(costMode) {
+        let whereParts = [];
+        if (config.statusFilter) whereParts.push(config.statusFilter);
+        whereParts.push(config.dateField + ">'" + sixMonthsAgo + "'");
 
-      // Location filter
-      if (config.locationMode === 'object') {
-        whereParts.push('location IS NOT NULL');
-      } else {
-        whereParts.push(config.latField + ' IS NOT NULL');
+        if (config.locationMode === 'object') {
+          whereParts.push('location IS NOT NULL');
+        } else {
+          whereParts.push(config.latField + ' IS NOT NULL');
+        }
+
+        if (config.costField && costThreshold > 0 && costMode !== 'none') {
+          whereParts.push(config.costField + ' IS NOT NULL');
+          if (costMode === 'cast') {
+            whereParts.push(config.costField + '::number>' + costThreshold);
+          } else {
+            whereParts.push(config.costField + '>' + costThreshold);
+          }
+        }
+
+        const where = encodeURIComponent(whereParts.join(' AND '));
+        const order = encodeURIComponent(config.dateField + ' DESC');
+        const url = config.api + '?$where=' + where + '&$order=' + order + '&$limit=200&$select=' + config.select;
+
+        console.log('Fetching permits for ' + config.name + ' (cost mode: ' + costMode + '):', decodeURIComponent(url.replace(config.api + '?', '')));
+        const res = await fetch(url);
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error('Permit API error for ' + config.name + ' (cost mode: ' + costMode + '):', errText);
+          throw new Error(errText);
+        }
+        return res.json();
       }
 
-      // Cost filter
-      if (config.costField && costThreshold > 0) {
-        whereParts.push(config.costField + ' IS NOT NULL');
-        if (config.costIsText) {
-          whereParts.push(config.costField + '::number>' + costThreshold);
-        } else {
-          whereParts.push(config.costField + '>' + costThreshold);
+      // Try with cast first, then without cast, then without cost filter
+      let data;
+      try {
+        data = await tryQuery('cast');
+      } catch (e1) {
+        console.log('Cast query failed for ' + config.name + ', trying without cast...');
+        try {
+          data = await tryQuery('direct');
+        } catch (e2) {
+          console.log('Direct cost query failed for ' + config.name + ', trying without cost filter...');
+          try {
+            data = await tryQuery('none');
+          } catch (e3) {
+            console.error('All query attempts failed for ' + config.name);
+            throw e3;
+          }
         }
       }
 
-      const where = encodeURIComponent(whereParts.join(' AND '));
-      const order = encodeURIComponent(config.dateField + ' DESC');
-      const url = config.api + '?$where=' + where + '&$order=' + order + '&$limit=200&$select=' + config.select;
-
-      const res = await fetch(url);
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error('Permit API response:', errText);
-        throw new Error('API error: ' + res.status);
-      }
-      data = await res.json();
+      console.log('Loaded ' + data.length + ' raw rows for ' + config.name, data.length > 0 ? data[0] : 'empty');
 
       permitData = [];
       data.forEach(d => {
