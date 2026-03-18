@@ -190,10 +190,12 @@
 
 <!-- LEGEND -->
 <div id="legend">
-  <h4>Freshness</h4>
+  <h4>User Reports</h4>
   <div class="legend-row"><div class="legend-dot" style="background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.5)"></div><span>≤ 7 days</span></div>
   <div class="legend-row"><div class="legend-dot" style="background:#eab308;box-shadow:0 0 6px rgba(234,179,8,0.5)"></div><span>8–14 days</span></div>
   <div class="legend-row"><div class="legend-dot" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.5)"></div><span>> 14 days</span></div>
+  <h4 style="margin-top:8px">Permit Data</h4>
+  <div class="legend-row"><div style="width:9px;height:9px;background:#3b82f6;border-radius:2px;box-shadow:0 0 6px rgba(59,130,246,0.5)"></div><span>SF building permit</span></div>
 </div>
 
 <!-- SEARCH -->
@@ -215,6 +217,12 @@
   </label>
   <div class="filter-label">Machinery</div>
   <div class="machine-filter" id="f-machines"></div>
+  <div style="border-top:1px solid rgba(255,255,255,0.06);margin:14px 0;"></div>
+  <div class="filter-label">SF Permit Data</div>
+  <label class="filter-check on" id="f-permits" onclick="togglePermitFilter()" style="margin-bottom:6px">
+    <input type="checkbox" id="f-permits-cb" checked> 🏗️ Show SF building permits
+  </label>
+  <p style="font-size:10.5px;color:#666;margin:0 0 14px;line-height:1.5;">Active construction permits from the City of San Francisco open data portal. Updated nightly.</p>
   <button class="btn-apply" onclick="applyFilters()">Apply Filters</button>
   <button class="btn-reset" onclick="resetFilters()">Reset</button>
 </div>
@@ -331,8 +339,8 @@ const D = 864e5;
 // Supabase config — stored in localStorage after first setup
 // ── HARDCODE YOUR SUPABASE CREDENTIALS HERE (between the quotes) ──
 // If these are filled in, the setup screen will never appear.
-const HARDCODED_URL = 'https://hwgbcxxxgwgyrvmievss.supabase.co';
-const HARDCODED_KEY = 'sb_publishable_5lnVleWfKoseJ1N50mm4Eg_Hw80Fc0c';
+const HARDCODED_URL = '';
+const HARDCODED_KEY = '';
 // ── END CREDENTIALS ───────────────────────────────────────────────
 
 let SUPABASE_URL = localStorage.getItem('cnm-sb-url') || HARDCODED_URL || '';
@@ -344,6 +352,9 @@ let adminPw = 'chocolaterain';
 let placing = false;
 let newLatLng = null;
 let map, markers = [];
+let permitMarkers = [];
+let permitData = [];
+let showPermits = true;
 let adminSelected = new Set();
 let adminSortCol = 'dateReported', adminSortDir = 'desc';
 
@@ -555,6 +566,7 @@ function initMap() {
     }
   });
   renderPins();
+  loadPermitData();
 }
 
 function makeIcon(color, sel) {
@@ -592,7 +604,7 @@ function renderPins() {
   markers.forEach(m => map.removeLayer(m));
   markers = [];
   const filtered = filterPins();
-  document.getElementById('count-badge').textContent = filtered.length + ' site' + (filtered.length !== 1 ? 's' : '');
+  document.getElementById('count-badge').textContent = filtered.length + ' report' + (filtered.length !== 1 ? 's' : '') + (showPermits && permitData.length ? ' + ' + permitData.length + ' permits' : '');
   filtered.forEach(pin => {
     const fr = freshness(pDate(pin));
     const marker = L.marker([pin.lat, pin.lng], { icon: makeIcon(pinColor(fr), false) }).addTo(map);
@@ -626,6 +638,115 @@ async function stillThere(id) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// SF PERMIT DATA
+// ═══════════════════════════════════════════════════════════════════════════════
+const PERMIT_API = 'https://data.sfgov.org/resource/i98e-djp9.json';
+
+// Permit types likely to have visible outdoor construction
+const VISIBLE_PERMIT_TYPES = [
+  'new construction',
+  'demolitions',
+  'additions alterations or repairs',
+  'otc alterations permit'
+];
+
+async function loadPermitData() {
+  try {
+    // Fetch recently issued permits with location data
+    // Filter: issued in last 180 days, has location, significant cost (>$50k suggests visible work)
+    const sixMonthsAgo = new Date(Date.now() - 180 * 864e5).toISOString().split('T')[0];
+    const query = [
+      `$where=current_status='issued'`,
+      `issued_date>'${sixMonthsAgo}'`,
+      `location IS NOT NULL`,
+      `estimated_cost>50000`,
+      `$order=issued_date DESC`,
+      `$limit=200`,
+      `$select=permit_number,permit_type_definition,street_number,street_name,street_suffix,description,issued_date,estimated_cost,location,neighborhoods_analysis_boundaries`
+    ].join('&');
+
+    const res = await fetch(PERMIT_API + '?' + query);
+    if (!res.ok) throw new Error('API error: ' + res.status);
+    const data = await res.json();
+
+    permitData = data.filter(d => d.location && d.location.latitude && d.location.longitude).map(d => ({
+      permit_number: d.permit_number || '',
+      type: d.permit_type_definition || 'Unknown',
+      address: [d.street_number, d.street_name, d.street_suffix].filter(Boolean).join(' '),
+      description: (d.description || '').slice(0, 200),
+      issued_date: d.issued_date || '',
+      cost: d.estimated_cost ? parseInt(d.estimated_cost) : 0,
+      neighborhood: d.neighborhoods_analysis_boundaries || '',
+      lat: parseFloat(d.location.latitude),
+      lng: parseFloat(d.location.longitude),
+    }));
+
+    console.log('Loaded ' + permitData.length + ' SF permits');
+    renderPermits();
+  } catch (e) {
+    console.error('Failed to load permit data:', e);
+  }
+}
+
+function makePermitIcon() {
+  return L.divIcon({
+    className: 'cnm-permit-pin',
+    html: `<div style="width:14px;height:14px;background:#3b82f6;border:2px solid rgba(255,255,255,0.3);border-radius:3px;box-shadow:0 2px 8px rgba(0,0,0,0.3),0 0 10px rgba(59,130,246,0.4);cursor:pointer;"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+}
+
+function renderPermits() {
+  // Clear existing permit markers
+  permitMarkers.forEach(m => map.removeLayer(m));
+  permitMarkers = [];
+
+  if (!showPermits || !permitData.length) return;
+
+  permitData.forEach(p => {
+    const marker = L.marker([p.lat, p.lng], { icon: makePermitIcon() }).addTo(map);
+    marker.on('click', () => showPermitPopup(p, marker));
+    permitMarkers.push(marker);
+  });
+}
+
+function showPermitPopup(permit, marker) {
+  const costStr = permit.cost ? '$' + permit.cost.toLocaleString() : 'Unknown';
+  const dateStr = permit.issued_date ? new Date(permit.issued_date).toLocaleDateString() : 'Unknown';
+  const descClean = permit.description.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const html = `<div class="pin-popup">
+    <div class="pin-status">
+      <div style="width:12px;height:12px;background:#3b82f6;border-radius:3px;box-shadow:0 0 10px rgba(59,130,246,0.5)"></div>
+      <span style="color:#60a5fa">SF Building Permit</span>
+    </div>
+    <div class="pin-location">📍 ${permit.address || 'Address unavailable'}</div>
+    ${permit.neighborhood ? `<div style="font-size:12px;color:#999;margin-bottom:8px;">📌 ${permit.neighborhood}</div>` : ''}
+    <div style="margin-bottom:10px;">
+      <div style="font-size:10px;color:#777;margin-bottom:4px;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Permit Type</div>
+      <span class="tag" style="background:rgba(59,130,246,0.12);color:#60a5fa;border-color:rgba(59,130,246,0.18)">${permit.type}</span>
+    </div>
+    ${descClean ? `<div style="margin-bottom:10px;"><div style="font-size:10px;color:#777;margin-bottom:4px;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Description</div><p style="font-size:12px;color:#bbb;margin:0;line-height:1.5;">${descClean}</p></div>` : ''}
+    <div class="pin-meta">
+      <span>💰 ${costStr}</span>
+      <span>📅 Issued ${dateStr}</span>
+    </div>
+    <div style="font-size:10px;color:#555;margin-top:8px;text-align:center;">Data from SF Open Data (DBI)</div>
+  </div>`;
+  marker.bindPopup(html, { maxWidth: 380, minWidth: 260 }).openPopup();
+}
+
+function togglePermitFilter() {
+  setTimeout(() => {
+    const cb = document.getElementById('f-permits-cb');
+    document.getElementById('f-permits').classList.toggle('on', cb.checked);
+    showPermits = cb.checked;
+    renderPermits();
+  }, 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // SEARCH
 // ═══════════════════════════════════════════════════════════════════════════════
 function buildFilterMachines() {
@@ -637,14 +758,17 @@ function toggleSearch() {
   b.textContent = p.classList.contains('open') ? '✕ Close' : '🔍 Search & Filter';
 }
 function toggleGvFilter() { setTimeout(() => document.getElementById('f-gv').classList.toggle('on', document.getElementById('f-gv-cb').checked), 0); }
-function applyFilters() { renderPins(); }
+function applyFilters() { renderPins(); renderPermits(); }
 function resetFilters() {
   document.getElementById('f-location').value = '';
   document.getElementById('loc-error').style.display = 'none';
   document.getElementById('f-min').value = ''; document.getElementById('f-max').value = '30';
   document.getElementById('f-gv-cb').checked = false; document.getElementById('f-gv').classList.remove('on');
   document.querySelectorAll('#f-machines input').forEach(el => { el.checked = false; el.parentElement.classList.remove('on'); });
-  renderPins();
+  document.getElementById('f-permits-cb').checked = true;
+  document.getElementById('f-permits').classList.add('on');
+  showPermits = true;
+  renderPins(); renderPermits();
 }
 
 async function goToLocation() {
