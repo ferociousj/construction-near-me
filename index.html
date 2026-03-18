@@ -714,10 +714,10 @@ const CITY_CONFIGS = {
     costField: null,
     costIsText: false,
     statusFilter: "permit_status='ISSUED'",
-    dateField: 'dobrundate',
+    dateField: null, // NYC dates are MM/DD/YYYY strings, can't filter — just get 200 most recent
     locationMode: 'latlong',
     latField: 'gis_latitude', lngField: 'gis_longitude',
-    select: 'borough,house__,street_name,job_type,work_type,permit_type,issuance_date,dobrundate,gis_latitude,gis_longitude,gis_nta_name',
+    select: 'borough,house__,street_name,job_type,work_type,permit_type,issuance_date,gis_latitude,gis_longitude,gis_nta_name',
     parse: d => ({
       permit_number: d.house__ || '',
       type: [d.job_type, d.work_type, d.permit_type].filter(Boolean).join(' - '),
@@ -734,19 +734,19 @@ const CITY_CONFIGS = {
     api: 'https://data.lacity.org/resource/pi9x-tg5x.json',
     costField: 'valuation',
     costIsText: true,
-    statusFilter: "latest_status='Issued'",
+    statusFilter: null, // status_desc has values like 'Permit Finaled' — skip filtering, just get recent
     dateField: 'issue_date',
-    locationMode: 'object',
-    locationField: 'location_1',
-    select: 'pcis_permit,permit_type,permit_sub_type,issue_date,valuation,address_start,street_direction,street_name,street_suffix,location_1,council_district',
+    locationMode: 'latlong',
+    latField: 'lat', lngField: 'lon',
+    select: 'permit_nbr,permit_type,permit_sub_type,issue_date,valuation,primary_address,work_desc,lat,lon,cpa',
     parse: d => ({
-      permit_number: d.pcis_permit || '',
+      permit_number: d.permit_nbr || '',
       type: [d.permit_type, d.permit_sub_type].filter(Boolean).join(' - '),
-      address: [d.address_start, d.street_direction, d.street_name, d.street_suffix].filter(Boolean).join(' '),
-      description: '',
+      address: d.primary_address || '',
+      description: (d.work_desc || '').slice(0, 200),
       issued_date: d.issue_date || '',
       cost: d.valuation ? parseInt(d.valuation) : 0,
-      neighborhood: d.council_district ? 'District ' + d.council_district : '',
+      neighborhood: d.cpa || '',
     }),
   },
   seattle: {
@@ -871,7 +871,7 @@ async function loadPermitData() {
       async function tryQuery(costMode) {
         let whereParts = [];
         if (config.statusFilter) whereParts.push(config.statusFilter);
-        whereParts.push(config.dateField + ">'" + sixMonthsAgo + "'");
+        if (config.dateField) whereParts.push(config.dateField + ">'" + sixMonthsAgo + "'");
 
         if (config.locationMode === 'object') {
           whereParts.push((config.locationField || 'location') + ' IS NOT NULL');
@@ -889,7 +889,8 @@ async function loadPermitData() {
         }
 
         const where = encodeURIComponent(whereParts.join(' AND '));
-        const order = encodeURIComponent(config.dateField + ' DESC');
+        const orderField = config.dateField || ':id';
+        const order = encodeURIComponent(orderField + ' DESC');
         const url = config.api + '?$where=' + where + '&$order=' + order + '&$limit=200&$select=' + config.select;
 
         console.log('Fetching permits for ' + config.name + ' (cost mode: ' + costMode + '):', decodeURIComponent(url.replace(config.api + '?', '')));
