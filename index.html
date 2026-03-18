@@ -977,6 +977,10 @@ function renderPermits() {
   permitMarkers.forEach(m => map.removeLayer(m));
   permitMarkers = [];
 
+  // Update the count badge
+  const filtered = filterPins();
+  document.getElementById('count-badge').textContent = filtered.length + ' report' + (filtered.length !== 1 ? 's' : '') + (showPermits && permitData.length ? ' + ' + permitData.length + ' permits' : '');
+
   if (!showPermits || !permitData.length) return;
 
   permitData.forEach(p => {
