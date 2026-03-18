@@ -655,7 +655,7 @@ async function loadPermitData() {
     // Fetch recently issued permits with location data
     // Filter: issued in last 180 days, has location, significant cost (>$50k suggests visible work)
     const sixMonthsAgo = new Date(Date.now() - 180 * 864e5).toISOString().split('T')[0];
-    const where = encodeURIComponent("status='issued' AND issued_date>'" + sixMonthsAgo + "' AND location IS NOT NULL AND estimated_cost>50000");
+    const where = encodeURIComponent("status='issued' AND issued_date>'" + sixMonthsAgo + "' AND location IS NOT NULL AND estimated_cost IS NOT NULL AND cast(estimated_cost as number)>50000");
     const select = 'permit_number,permit_type_definition,street_number,street_name,street_suffix,description,issued_date,estimated_cost,location,neighborhoods_analysis_boundaries';
     const url = PERMIT_API + '?$where=' + where + '&$order=issued_date%20DESC&$limit=200&$select=' + select;
 
