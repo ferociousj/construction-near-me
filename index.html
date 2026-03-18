@@ -1322,9 +1322,215 @@ document.getElementById('a-filter-col').addEventListener('change', renderAdminTa
 document.getElementById('a-filter-val').addEventListener('input', renderAdminTable);
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// DEBUG MODE — access via ?debug=true
+// ═══════════════════════════════════════════════════════════════════════════════
+async function runDebug() {
+  document.body.innerHTML = '<div id="debug" style="background:#0a0a1a;color:#e0e0e0;padding:24px;font-family:monospace;font-size:13px;white-space:pre-wrap;max-width:1100px;margin:0 auto;"></div>';
+  const out = document.getElementById('debug');
+  function log(msg) { out.textContent += msg + '\n'; }
+
+  log('=== CONSTRUCTION NEAR ME — API DEBUG REPORT ===');
+  log('Date: ' + new Date().toISOString());
+  log('');
+
+  for (const [key, config] of Object.entries(CITY_CONFIGS)) {
+    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    log('CITY: ' + config.name + ' (' + key + ')');
+    log('API: ' + config.api);
+
+    if (config.isArcGIS) {
+      log('Type: ArcGIS REST');
+      try {
+        const params = new URLSearchParams({ where: '1=1', outFields: '*', f: 'json', resultRecordCount: '2' });
+        const res = await fetch(config.api + '?' + params.toString());
+        log('Status: ' + res.status);
+        const json = await res.json();
+        if (json.error) { log('ERROR: ' + JSON.stringify(json.error)); }
+        else if (json.features && json.features.length > 0) {
+          log('SUCCESS: ' + json.features.length + ' features returned');
+          log('Sample fields: ' + Object.keys(json.features[0].attributes || {}).join(', '));
+          log('Has geometry: ' + !!(json.features[0].geometry));
+          log('Sample row: ' + JSON.stringify(json.features[0].attributes, null, 2).slice(0, 500));
+        } else { log('EMPTY: No features returned'); }
+      } catch (e) { log('FETCH ERROR: ' + e.message); }
+      log('');
+      continue;
+    }
+
+    log('Type: Socrata SODA');
+    log('Config: statusFilter=' + config.statusFilter + ' dateField=' + config.dateField + ' costField=' + config.costField + ' locationMode=' + config.locationMode);
+    if (config.locationMode === 'latlong') log('  latField=' + config.latField + ' lngField=' + config.lngField);
+
+    // Test 1: Raw fetch — just get 2 rows with no filter to see field names
+    log('');
+    log('TEST 1: Raw fetch (no filters, 2 rows)');
+    try {
+      const res = await fetch(config.api + '?$limit=2');
+      log('  Status: ' + res.status);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.length > 0) {
+          log('  Fields found: ' + Object.keys(data[0]).join(', '));
+          log('  Sample row: ' + JSON.stringify(data[0], null, 2).slice(0, 800));
+        } else { log('  EMPTY: No rows returned'); }
+      } else {
+        const err = await res.text();
+        log('  ERROR: ' + err.slice(0, 400));
+      }
+    } catch (e) { log('  FETCH ERROR: ' + e.message); }
+
+    // Test 2: Check if status field exists and get distinct values
+    log('');
+    log('TEST 2: Status field check');
+    if (config.statusFilter) {
+      const statusField = config.statusFilter.split('=')[0].trim();
+      try {
+        const res = await fetch(config.api + '?$select=distinct ' + statusField + '&$limit=10');
+        log('  Status field "' + statusField + '": HTTP ' + res.status);
+        if (res.ok) {
+          const data = await res.json();
+          log('  Distinct values: ' + data.map(d => d[statusField]).join(', '));
+        } else {
+          const err = await res.text();
+          log('  ERROR (field may not exist): ' + err.slice(0, 300));
+        }
+      } catch (e) { log('  FETCH ERROR: ' + e.message); }
+    } else { log('  (no status filter configured)'); }
+
+    // Test 3: Check if date field exists
+    log('');
+    log('TEST 3: Date field check');
+    try {
+      const res = await fetch(config.api + '?$select=' + config.dateField + '&$limit=1&$order=' + config.dateField + '%20DESC');
+      log('  Date field "' + config.dateField + '": HTTP ' + res.status);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.length > 0) log('  Most recent value: ' + data[0][config.dateField]);
+        else log('  EMPTY');
+      } else {
+        const err = await res.text();
+        log('  ERROR: ' + err.slice(0, 300));
+      }
+    } catch (e) { log('  FETCH ERROR: ' + e.message); }
+
+    // Test 4: Check if cost field exists and its type
+    log('');
+    log('TEST 4: Cost field check');
+    if (config.costField) {
+      try {
+        const res = await fetch(config.api + '?$select=' + config.costField + '&$where=' + config.costField + '%20IS%20NOT%20NULL&$limit=3&$order=' + config.costField + '%20DESC');
+        log('  Cost field "' + config.costField + '": HTTP ' + res.status);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.length > 0) {
+            const val = data[0][config.costField];
+            log('  Sample values: ' + data.map(d => d[config.costField]).join(', '));
+            log('  JS typeof: ' + typeof val);
+          } else { log('  EMPTY (no non-null values)'); }
+        } else {
+          const err = await res.text();
+          log('  ERROR: ' + err.slice(0, 300));
+        }
+      } catch (e) { log('  FETCH ERROR: ' + e.message); }
+
+      // Test cast
+      log('  Cast test (::number):');
+      try {
+        const res = await fetch(config.api + '?$where=' + config.costField + '%20IS%20NOT%20NULL%20AND%20' + config.costField + '::number%3E0&$limit=1');
+        log('    ::number cast: HTTP ' + res.status);
+        if (!res.ok) {
+          const err = await res.text();
+          log('    ' + (err.includes('type-mismatch') ? 'FIELD IS ALREADY NUMERIC (no cast needed)' : err.slice(0, 200)));
+        } else { log('    Cast works — field is text type'); }
+      } catch (e) { log('    FETCH ERROR: ' + e.message); }
+
+      log('  Direct compare test:');
+      try {
+        const res = await fetch(config.api + '?$where=' + config.costField + '%20IS%20NOT%20NULL%20AND%20' + config.costField + '%3E0&$limit=1');
+        log('    Direct compare: HTTP ' + res.status);
+        if (!res.ok) {
+          const err = await res.text();
+          log('    ' + (err.includes('type-mismatch') ? 'FIELD IS TEXT (needs cast)' : err.slice(0, 200)));
+        } else { log('    Direct compare works — field is numeric type'); }
+      } catch (e) { log('    FETCH ERROR: ' + e.message); }
+    } else { log('  (no cost field configured)'); }
+
+    // Test 5: Check location fields
+    log('');
+    log('TEST 5: Location field check');
+    if (config.locationMode === 'latlong') {
+      try {
+        const res = await fetch(config.api + '?$select=' + config.latField + ',' + config.lngField + '&$where=' + config.latField + '%20IS%20NOT%20NULL&$limit=2');
+        log('  Lat/Lng fields "' + config.latField + '","' + config.lngField + '": HTTP ' + res.status);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.length > 0) log('  Sample: lat=' + data[0][config.latField] + ' lng=' + data[0][config.lngField]);
+          else log('  EMPTY');
+        } else {
+          const err = await res.text();
+          log('  ERROR: ' + err.slice(0, 300));
+        }
+      } catch (e) { log('  FETCH ERROR: ' + e.message); }
+    } else {
+      try {
+        const res = await fetch(config.api + '?$select=location&$where=location%20IS%20NOT%20NULL&$limit=2');
+        log('  Location object: HTTP ' + res.status);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.length > 0) log('  Sample: ' + JSON.stringify(data[0].location));
+          else log('  EMPTY');
+        } else {
+          const err = await res.text();
+          log('  ERROR: ' + err.slice(0, 300));
+        }
+      } catch (e) { log('  FETCH ERROR: ' + e.message); }
+    }
+
+    // Test 6: Try the full query
+    log('');
+    log('TEST 6: Full query (as the app would run it)');
+    const sixMonthsAgo = new Date(Date.now() - 180 * 864e5).toISOString().split('T')[0];
+    let whereParts = [];
+    if (config.statusFilter) whereParts.push(config.statusFilter);
+    whereParts.push(config.dateField + ">'" + sixMonthsAgo + "'");
+    if (config.locationMode === 'object') whereParts.push('location IS NOT NULL');
+    else whereParts.push(config.latField + ' IS NOT NULL');
+
+    const where = encodeURIComponent(whereParts.join(' AND '));
+    const order = encodeURIComponent(config.dateField + ' DESC');
+    const url = config.api + '?$where=' + where + '&$order=' + order + '&$limit=5&$select=' + config.select;
+    log('  URL: ' + decodeURIComponent(url));
+    try {
+      const res = await fetch(url);
+      log('  Status: ' + res.status);
+      if (res.ok) {
+        const data = await res.json();
+        log('  Rows: ' + data.length);
+        if (data.length > 0) {
+          const coords = extractLatLng(data[0], config);
+          log('  Parsed coords: ' + JSON.stringify(coords));
+          log('  Parsed permit: ' + JSON.stringify(config.parse(data[0]), null, 2).slice(0, 400));
+        }
+      } else {
+        const err = await res.text();
+        log('  ERROR: ' + err.slice(0, 500));
+      }
+    } catch (e) { log('  FETCH ERROR: ' + e.message); }
+
+    log('');
+  }
+
+  log('=== END DEBUG REPORT ===');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════════════════════════════
-boot();
+if (new URLSearchParams(window.location.search).get('debug') === 'true') {
+  runDebug();
+} else {
+  boot();
+}
 </script>
 </body>
 </html>
