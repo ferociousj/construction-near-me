@@ -231,6 +231,12 @@
       <option value="la">Los Angeles</option>
       <option value="seattle">Seattle</option>
       <option value="austin">Austin</option>
+      <option value="sandiego">San Diego County</option>
+      <option value="nashville">Nashville</option>
+      <option value="minneapolis">Minneapolis</option>
+      <option value="honolulu">Honolulu</option>
+      <option value="miami">Miami-Dade</option>
+      <option value="philly">Philadelphia</option>
     </select>
   </div>
   <div style="margin-bottom:10px;">
@@ -792,8 +798,136 @@ const CITY_CONFIGS = {
       neighborhood: d.jurisdiction || '',
     }),
   },
+  sandiego: {
+    name: 'San Diego County',
+    center: [32.7157, -117.1611],
+    api: 'https://data.sandiegocounty.gov/resource/dyzh-7eat.json',
+    costField: 'valuation',
+    costIsText: true,
+    statusFilter: null,
+    dateField: 'issue_date',
+    locationMode: 'latlong',
+    latField: 'latitude', lngField: 'longitude',
+    select: 'permit_number,permit_type,permit_sub_type,description,issue_date,valuation,address,latitude,longitude',
+    parse: d => ({
+      permit_number: d.permit_number || '',
+      type: [d.permit_type, d.permit_sub_type].filter(Boolean).join(' - '),
+      address: d.address || '',
+      description: (d.description || '').slice(0, 200),
+      issued_date: d.issue_date || '',
+      cost: d.valuation ? parseInt(d.valuation) : 0,
+      neighborhood: '',
+    }),
+  },
+  nashville: {
+    name: 'Nashville',
+    center: [36.1627, -86.7816],
+    api: 'https://data.nashville.gov/resource/3h5w-q8b7.json',
+    costField: 'const_cost',
+    costIsText: true,
+    statusFilter: null,
+    dateField: 'date_issued',
+    locationMode: 'latlong',
+    latField: 'latitude', lngField: 'longitude',
+    select: 'permit_number,permit_type,permit_sub_type,purpose,date_issued,const_cost,address,city,latitude,longitude',
+    parse: d => ({
+      permit_number: d.permit_number || '',
+      type: [d.permit_type, d.permit_sub_type].filter(Boolean).join(' - '),
+      address: [d.address, d.city].filter(Boolean).join(', '),
+      description: (d.purpose || '').slice(0, 200),
+      issued_date: d.date_issued || '',
+      cost: d.const_cost ? parseInt(d.const_cost) : 0,
+      neighborhood: '',
+    }),
+  },
+  minneapolis: {
+    name: 'Minneapolis',
+    center: [44.9778, -93.2650],
+    api: 'https://opendata.minneapolismn.gov/resource/hfya-jkhs.json',
+    costField: 'valuation',
+    costIsText: true,
+    statusFilter: null,
+    dateField: 'issued_date',
+    locationMode: 'latlong',
+    latField: 'latitude', lngField: 'longitude',
+    select: 'permit_number,permit_type,description,issued_date,valuation,address,latitude,longitude',
+    parse: d => ({
+      permit_number: d.permit_number || '',
+      type: d.permit_type || 'Unknown',
+      address: d.address || '',
+      description: (d.description || '').slice(0, 200),
+      issued_date: d.issued_date || '',
+      cost: d.valuation ? parseInt(d.valuation) : 0,
+      neighborhood: '',
+    }),
+  },
+  honolulu: {
+    name: 'Honolulu',
+    center: [21.3069, -157.8583],
+    api: 'https://data.honolulu.gov/resource/mhcf-stc5.json',
+    costField: 'est_value',
+    costIsText: true,
+    statusFilter: null,
+    dateField: 'issue_date',
+    locationMode: 'latlong',
+    latField: 'latitude', lngField: 'longitude',
+    select: 'permit_number,permit_type,description,issue_date,est_value,address,latitude,longitude',
+    parse: d => ({
+      permit_number: d.permit_number || '',
+      type: d.permit_type || 'Unknown',
+      address: d.address || '',
+      description: (d.description || '').slice(0, 200),
+      issued_date: d.issue_date || '',
+      cost: d.est_value ? parseInt(d.est_value) : 0,
+      neighborhood: '',
+    }),
+  },
+  miami: {
+    name: 'Miami-Dade',
+    center: [25.7617, -80.1918],
+    api: 'https://datahub-miamidade.opendata.arcgis.com/resource/quft-sxph.json',
+    costField: 'total_value',
+    costIsText: true,
+    statusFilter: null,
+    dateField: 'issue_date',
+    locationMode: 'latlong',
+    latField: 'latitude', lngField: 'longitude',
+    select: 'permit_number,permit_type,description,issue_date,total_value,address,latitude,longitude',
+    parse: d => ({
+      permit_number: d.permit_number || '',
+      type: d.permit_type || 'Unknown',
+      address: d.address || '',
+      description: (d.description || '').slice(0, 200),
+      issued_date: d.issue_date || '',
+      cost: d.total_value ? parseInt(d.total_value) : 0,
+      neighborhood: '',
+    }),
+  },
+  philly: {
+    name: 'Philadelphia',
+    center: [39.9526, -75.1652],
+    api: 'https://data.phila.gov/resource/ds7g-p84b.json',
+    costField: null,
+    costIsText: false,
+    statusFilter: null,
+    dateField: 'permitissuedate',
+    locationMode: 'latlong',
+    latField: 'lat', lngField: 'lng',
+    select: 'permitnumber,permittype,permitdescription,permitissuedate,address,status,lat,lng',
+    parse: d => ({
+      permit_number: d.permitnumber || '',
+      type: d.permittype || 'Unknown',
+      address: d.address || '',
+      description: (d.permitdescription || '').slice(0, 200),
+      issued_date: d.permitissuedate || '',
+      cost: 0,
+      neighborhood: '',
+    }),
+  },
   // DC removed: opendata.dc.gov blocks browser requests (CORS)
   // Portland removed: ArcGIS endpoint returned 404 — service URL has changed
+  // Boston: uses CKAN (not Socrata) — would need different query format
+  // Denver: no Socrata permit dataset found
 };
 
 let currentCity = 'sf';
