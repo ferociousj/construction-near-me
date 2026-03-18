@@ -231,8 +231,6 @@
       <option value="la">Los Angeles</option>
       <option value="seattle">Seattle</option>
       <option value="austin">Austin</option>
-      <option value="dc">Washington DC</option>
-      <option value="portland">Portland</option>
     </select>
   </div>
   <div style="margin-bottom:10px;">
@@ -692,20 +690,20 @@ const CITY_CONFIGS = {
     name: 'Chicago',
     center: [41.8781, -87.6298],
     api: 'https://data.cityofchicago.org/resource/ydr8-5enu.json',
-    costField: 'total_fee',
+    costField: 'reported_cost',
     costIsText: true,
     statusFilter: "permit_status='ACTIVE'",
     dateField: 'issue_date',
     locationMode: 'latlong',
     latField: 'latitude', lngField: 'longitude',
-    select: 'id,permit_type,work_description,issue_date,total_fee,street_number,street_direction,street_name,latitude,longitude,community_area',
+    select: 'id,permit_type,work_description,issue_date,reported_cost,street_number,street_direction,street_name,latitude,longitude,community_area',
     parse: d => ({
       permit_number: d.id || '',
       type: d.permit_type || 'Unknown',
       address: [d.street_number, d.street_direction, d.street_name].filter(Boolean).join(' '),
       description: (d.work_description || '').slice(0, 200),
       issued_date: d.issue_date || '',
-      cost: d.total_fee ? parseInt(d.total_fee) : 0,
+      cost: d.reported_cost ? parseInt(d.reported_cost) : 0,
       neighborhood: d.community_area ? 'Community Area ' + d.community_area : '',
     }),
   },
@@ -718,8 +716,8 @@ const CITY_CONFIGS = {
     statusFilter: "permit_status='ISSUED'",
     dateField: 'issuance_date',
     locationMode: 'latlong',
-    latField: 'latitude', lngField: 'longitude',
-    select: 'borough,house__,street_name,job_type,work_type,permit_status,permit_type,issuance_date,latitude,longitude',
+    latField: 'gis_latitude', lngField: 'gis_longitude',
+    select: 'borough,house__,street_name,job_type,work_type,permit_type,issuance_date,gis_latitude,gis_longitude,gis_nta_name',
     parse: d => ({
       permit_number: d.house__ || '',
       type: [d.job_type, d.work_type, d.permit_type].filter(Boolean).join(' - '),
@@ -727,7 +725,7 @@ const CITY_CONFIGS = {
       description: '',
       issued_date: d.issuance_date || '',
       cost: 0,
-      neighborhood: d.borough || '',
+      neighborhood: d.gis_nta_name || d.borough || '',
     }),
   },
   la: {
@@ -736,19 +734,19 @@ const CITY_CONFIGS = {
     api: 'https://data.lacity.org/resource/bi25-emib.json',
     costField: 'valuation',
     costIsText: true,
-    statusFilter: "latest_status='Permit Issued'",
+    statusFilter: "latest_status='Issued'",
     dateField: 'issue_date',
-    locationMode: 'latlong',
-    latField: 'latitude', lngField: 'longitude',
-    select: 'pcis_permit,permit_type,permit_sub_type,work_description,issue_date,valuation,address,latitude,longitude',
+    locationMode: 'object',
+    locationField: 'location_1',
+    select: 'pcis_permit,permit_type,permit_sub_type,issue_date,valuation,address_start,street_direction,street_name,street_suffix,location_1,council_district',
     parse: d => ({
       permit_number: d.pcis_permit || '',
       type: [d.permit_type, d.permit_sub_type].filter(Boolean).join(' - '),
-      address: d.address || '',
-      description: (d.work_description || '').slice(0, 200),
+      address: [d.address_start, d.street_direction, d.street_name, d.street_suffix].filter(Boolean).join(' '),
+      description: '',
       issued_date: d.issue_date || '',
       cost: d.valuation ? parseInt(d.valuation) : 0,
-      neighborhood: '',
+      neighborhood: d.council_district ? 'District ' + d.council_district : '',
     }),
   },
   seattle: {
@@ -757,7 +755,7 @@ const CITY_CONFIGS = {
     api: 'https://data.seattle.gov/resource/76t5-zqzr.json',
     costField: 'estprojectcost',
     costIsText: true,
-    statusFilter: null, // Seattle uses various status values; we filter by issueddate existing
+    statusFilter: null,
     dateField: 'issueddate',
     locationMode: 'latlong',
     latField: 'latitude', lngField: 'longitude',
@@ -776,59 +774,25 @@ const CITY_CONFIGS = {
     name: 'Austin',
     center: [30.2672, -97.7431],
     api: 'https://data.austintexas.gov/resource/3syk-w9eu.json',
-    costField: 'total_valuation',
-    costIsText: true,
-    statusFilter: "status_current='Issued'",
-    dateField: 'issued_date',
-    locationMode: 'latlong',
-    latField: 'latitude', lngField: 'longitude',
-    select: 'permit_number,permit_type_desc,work_class,description,issued_date,total_valuation,original_address,latitude,longitude,jurisdiction',
-    parse: d => ({
-      permit_number: d.permit_number || '',
-      type: [d.permit_type_desc, d.work_class].filter(Boolean).join(' - '),
-      address: d.original_address || '',
-      description: (d.description || '').slice(0, 200),
-      issued_date: d.issued_date || '',
-      cost: d.total_valuation ? parseInt(d.total_valuation) : 0,
-      neighborhood: d.jurisdiction || '',
-    }),
-  },
-  dc: {
-    name: 'Washington DC',
-    center: [38.9072, -77.0369],
-    api: 'https://opendata.dc.gov/resource/awxm-4of9.json',
-    costField: 'fees_paid',
-    costIsText: true,
-    statusFilter: "status='PERMIT ISSUED'",
+    costField: null,
+    costIsText: false,
+    statusFilter: "status_current='Active'",
     dateField: 'issue_date',
     locationMode: 'latlong',
     latField: 'latitude', lngField: 'longitude',
-    select: 'permit_number,permit_type_name,permit_subtype_name,description_of_work,issue_date,fees_paid,full_address,latitude,longitude,ward',
+    select: 'permit_number,permit_type_desc,work_class,description,issue_date,original_address1,latitude,longitude,jurisdiction',
     parse: d => ({
       permit_number: d.permit_number || '',
-      type: [d.permit_type_name, d.permit_subtype_name].filter(Boolean).join(' - '),
-      address: d.full_address || '',
-      description: (d.description_of_work || '').slice(0, 200),
+      type: [d.permit_type_desc, d.work_class].filter(Boolean).join(' - '),
+      address: d.original_address1 || '',
+      description: (d.description || '').slice(0, 200),
       issued_date: d.issue_date || '',
-      cost: d.fees_paid ? parseInt(d.fees_paid) : 0,
-      neighborhood: d.ward ? 'Ward ' + d.ward : '',
+      cost: 0,
+      neighborhood: d.jurisdiction || '',
     }),
   },
-  portland: {
-    name: 'Portland',
-    center: [45.5152, -122.6784],
-    api: 'https://www.portlandmaps.com/arcgis/rest/services/Public/COP_OpenData_Development/MapServer/5/query',
-    isArcGIS: true,
-    parse: d => ({
-      permit_number: d.CaseNumber || '',
-      type: d.CaseType || 'Unknown',
-      address: d.Address || '',
-      description: (d.Description || '').slice(0, 200),
-      issued_date: d.IssuedDate ? new Date(d.IssuedDate).toISOString() : '',
-      cost: d.Valuation ? parseInt(d.Valuation) : 0,
-      neighborhood: d.Neighborhood || '',
-    }),
-  },
+  // DC removed: opendata.dc.gov blocks browser requests (CORS)
+  // Portland removed: ArcGIS endpoint returned 404 — service URL has changed
 };
 
 let currentCity = 'sf';
@@ -839,16 +803,20 @@ function extractLatLng(d, config) {
   if (config.locationMode === 'latlong') {
     lat = parseFloat(d[config.latField]);
     lng = parseFloat(d[config.lngField]);
-  } else if (config.locationMode === 'object' && d.location) {
-    if (d.location.latitude && d.location.longitude) {
-      lat = parseFloat(d.location.latitude);
-      lng = parseFloat(d.location.longitude);
-    } else if (d.location.coordinates && d.location.coordinates.length === 2) {
-      lng = d.location.coordinates[0];
-      lat = d.location.coordinates[1];
-    } else if (typeof d.location === 'string') {
-      const m = d.location.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/);
-      if (m) { lng = parseFloat(m[1]); lat = parseFloat(m[2]); }
+  } else if (config.locationMode === 'object') {
+    // Support custom location field name (e.g. LA uses 'location_1' instead of 'location')
+    const locObj = d[config.locationField || 'location'];
+    if (locObj) {
+      if (locObj.latitude && locObj.longitude) {
+        lat = parseFloat(locObj.latitude);
+        lng = parseFloat(locObj.longitude);
+      } else if (locObj.coordinates && locObj.coordinates.length === 2) {
+        lng = locObj.coordinates[0];
+        lat = locObj.coordinates[1];
+      } else if (typeof locObj === 'string') {
+        const m = locObj.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/);
+        if (m) { lng = parseFloat(m[1]); lat = parseFloat(m[2]); }
+      }
     }
   }
 
@@ -906,7 +874,7 @@ async function loadPermitData() {
         whereParts.push(config.dateField + ">'" + sixMonthsAgo + "'");
 
         if (config.locationMode === 'object') {
-          whereParts.push('location IS NOT NULL');
+          whereParts.push((config.locationField || 'location') + ' IS NOT NULL');
         } else {
           whereParts.push(config.latField + ' IS NOT NULL');
         }
@@ -1493,7 +1461,7 @@ async function runDebug() {
     let whereParts = [];
     if (config.statusFilter) whereParts.push(config.statusFilter);
     whereParts.push(config.dateField + ">'" + sixMonthsAgo + "'");
-    if (config.locationMode === 'object') whereParts.push('location IS NOT NULL');
+    if (config.locationMode === 'object') whereParts.push((config.locationField || 'location') + ' IS NOT NULL');
     else whereParts.push(config.latField + ' IS NOT NULL');
 
     const where = encodeURIComponent(whereParts.join(' AND '));
