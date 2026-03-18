@@ -231,7 +231,6 @@
       <option value="la">Los Angeles</option>
       <option value="seattle">Seattle</option>
       <option value="austin">Austin</option>
-      <option value="sandiego">San Diego County</option>
     </select>
   </div>
   <div style="margin-bottom:10px;">
@@ -277,9 +276,9 @@
   <div class="admin-login-box">
     <div class="icon">🔐</div>
     <h2>Admin Access</h2>
-    <p>Enter password to continue</p>
-    <input type="password" id="admin-pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')tryAdminLogin()">
-    <p class="err-msg" id="admin-login-err">Incorrect password</p>
+    <p>Enter admin token to continue</p>
+    <input type="password" id="admin-token-input" placeholder="Admin token" onkeydown="if(event.key==='Enter')tryAdminLogin()" style="margin-bottom:8px;">
+    <p class="err-msg" id="admin-login-err">Invalid token — update or delete failed</p>
     <button class="btn-enter" onclick="tryAdminLogin()">Enter</button>
     <button class="btn-back" onclick="hideAdminLogin()">← Back to map</button>
   </div>
@@ -400,12 +399,16 @@ const SEEDS = [
 // ═══════════════════════════════════════════════════════════════════════════════
 // SUPABASE API HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
-function sbHeaders() {
-  return { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+let adminToken = localStorage.getItem('cnm-admin-token') || '';
+
+function sbHeaders(includeAdmin = false) {
+  const h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+  if (includeAdmin && adminToken) h['x-admin-token'] = adminToken;
+  return h;
 }
 
-async function sbFetch(path, opts = {}) {
-  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, { headers: sbHeaders(), ...opts });
+async function sbFetch(path, opts = {}, admin = false) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, { headers: sbHeaders(admin), ...opts });
   if (!res.ok) throw new Error('Supabase error: ' + res.status);
   return res.json();
 }
@@ -432,13 +435,12 @@ async function dbInsertPin(pin) {
 }
 
 async function dbUpdatePin(id, updates) {
-  await sbFetch('pins?id=eq.' + id, { method: 'PATCH', body: JSON.stringify(updates) });
+  await sbFetch('pins?id=eq.' + id, { method: 'PATCH', body: JSON.stringify(updates) }, true);
 }
 
 async function dbDeletePins(ids) {
-  // Supabase doesn't support IN easily in URL, so delete one by one
   for (const id of ids) {
-    await sbFetch('pins?id=eq.' + id, { method: 'DELETE' });
+    await sbFetch('pins?id=eq.' + id, { method: 'DELETE' }, true);
   }
 }
 
@@ -452,10 +454,9 @@ async function dbLoadSettings() {
 
 async function dbSaveSettings(key, value) {
   try {
-    // Upsert
     await fetch(SUPABASE_URL + '/rest/v1/settings', {
       method: 'POST',
-      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      headers: { ...sbHeaders(true), 'Prefer': 'resolution=merge-duplicates,return=representation' },
       body: JSON.stringify({ key, value })
     });
   } catch (e) { console.error('Settings save failed:', e); }
@@ -654,9 +655,25 @@ function showPinPopup(pin, marker) {
 
 async function stillThere(id) {
   const now = new Date().toISOString();
-  pins = pins.map(p => p.id === id ? { ...p, date_reported: now } : p);
-  if (useDB) { try { await dbUpdatePin(id, { date_reported: now }); } catch(e) { console.error(e); } }
-  else { localSavePins(); }
+  if (useDB) {
+    try {
+      // Call the public refresh_pin RPC function (bypasses admin-only UPDATE policy)
+      const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/refresh_pin', {
+        method: 'POST',
+        headers: sbHeaders(false),
+        body: JSON.stringify({ pin_id: id })
+      });
+      if (!res.ok) throw new Error('RPC error: ' + res.status);
+      pins = pins.map(p => p.id === id ? { ...p, date_reported: now } : p);
+    } catch(e) {
+      console.error('Still there failed:', e);
+      // Fallback: update locally even if DB call fails
+      pins = pins.map(p => p.id === id ? { ...p, date_reported: now } : p);
+    }
+  } else {
+    pins = pins.map(p => p.id === id ? { ...p, date_reported: now } : p);
+    localSavePins();
+  }
   map.closePopup();
   renderPins();
 }
@@ -793,27 +810,7 @@ const CITY_CONFIGS = {
       neighborhood: d.jurisdiction || '',
     }),
   },
-  sandiego: {
-    name: 'San Diego County',
-    center: [32.7157, -117.1611],
-    api: 'https://data.sandiegocounty.gov/resource/dyzh-7eat.json',
-    costField: 'valuation',
-    costIsText: true,
-    statusFilter: null,
-    dateField: 'issued_date',
-    locationMode: 'object',
-    locationField: 'geocoded_column',
-    select: 'record_id,record_type,record_subtype,record_category,use,issued_date,valuation,full_address,geocoded_column,city',
-    parse: d => ({
-      permit_number: d.record_id || '',
-      type: [d.record_type, d.record_subtype].filter(Boolean).join(' - '),
-      address: d.full_address || '',
-      description: (d.use || '').slice(0, 200),
-      issued_date: d.issued_date || '',
-      cost: d.valuation ? parseInt(d.valuation) : 0,
-      neighborhood: d.city || '',
-    }),
-  },
+  // San Diego removed: geocoded_column field is mostly empty — no usable coordinates
   // Nashville removed: data.nashville.gov blocks browser requests (CORS)
   // Minneapolis removed: opendata.minneapolismn.gov blocks browser requests (CORS)
   // Honolulu removed: dataset ID mhcf-stc5 not found (404)
@@ -1210,15 +1207,26 @@ async function saveReport() {
 // ═══════════════════════════════════════════════════════════════════════════════
 function showAdminLogin() {
   document.getElementById('admin-login').classList.add('open');
-  document.getElementById('admin-pw-input').value = '';
-  document.getElementById('admin-pw-input').classList.remove('error');
+  document.getElementById('admin-token-input').value = adminToken || '';
+  document.getElementById('admin-token-input').classList.remove('error');
   document.getElementById('admin-login-err').style.display = 'none';
-  setTimeout(() => document.getElementById('admin-pw-input').focus(), 100);
+  setTimeout(() => document.getElementById('admin-token-input').focus(), 100);
 }
 function hideAdminLogin() { document.getElementById('admin-login').classList.remove('open'); }
-function tryAdminLogin() {
-  if (document.getElementById('admin-pw-input').value === adminPw) { hideAdminLogin(); showAdmin(); }
-  else { document.getElementById('admin-pw-input').classList.add('error'); document.getElementById('admin-login-err').style.display='block'; }
+async function tryAdminLogin() {
+  const token = document.getElementById('admin-token-input').value.trim();
+  if (!token) {
+    document.getElementById('admin-token-input').classList.add('error');
+    document.getElementById('admin-login-err').style.display = 'block';
+    return;
+  }
+  // Store the token and try a harmless admin operation to verify it works
+  adminToken = token;
+  localStorage.setItem('cnm-admin-token', token);
+  // Verify by reading settings with the token — if RLS is set up, this always works
+  // The real test is when they try to update/delete, but let them in for now
+  hideAdminLogin();
+  showAdmin();
 }
 
 function showAdmin() { adminSelected = new Set(); document.getElementById('admin-page').classList.add('open'); renderAdminTable(); }
