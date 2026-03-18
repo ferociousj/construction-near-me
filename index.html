@@ -195,7 +195,7 @@
   <div class="legend-row"><div class="legend-dot" style="background:#eab308;box-shadow:0 0 6px rgba(234,179,8,0.5)"></div><span>8–14 days</span></div>
   <div class="legend-row"><div class="legend-dot" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.5)"></div><span>> 14 days</span></div>
   <h4 style="margin-top:8px">Permit Data</h4>
-  <div class="legend-row"><div style="width:9px;height:9px;background:#3b82f6;border-radius:2px;box-shadow:0 0 6px rgba(59,130,246,0.5)"></div><span>SF building permit</span></div>
+  <div class="legend-row"><div style="width:9px;height:9px;background:#3b82f6;border-radius:2px;box-shadow:0 0 6px rgba(59,130,246,0.5)"></div><span>City building permit</span></div>
 </div>
 
 <!-- SEARCH -->
@@ -218,10 +218,23 @@
   <div class="filter-label">Machinery</div>
   <div class="machine-filter" id="f-machines"></div>
   <div style="border-top:1px solid rgba(255,255,255,0.06);margin:14px 0;"></div>
-  <div class="filter-label">SF Permit Data</div>
+  <div class="filter-label">Permit Data</div>
   <label class="filter-check on" id="f-permits" onclick="togglePermitFilter()" style="margin-bottom:6px">
-    <input type="checkbox" id="f-permits-cb" checked> 🏗️ Show SF building permits
+    <input type="checkbox" id="f-permits-cb" checked> 🏗️ Show building permits
   </label>
+  <div style="margin-bottom:10px;">
+    <div style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;font-weight:600;">City</div>
+    <select id="f-city" onchange="onCityChange()" style="width:100%;padding:7px 10px;border-radius:7px;background:#151528;color:#ccc;border:1px solid rgba(255,255,255,0.08);font-size:13px;outline:none;margin-bottom:8px;">
+      <option value="sf">San Francisco</option>
+      <option value="chicago">Chicago</option>
+      <option value="nyc">New York City</option>
+      <option value="la">Los Angeles</option>
+      <option value="seattle">Seattle</option>
+      <option value="austin">Austin</option>
+      <option value="dc">Washington DC</option>
+      <option value="portland">Portland</option>
+    </select>
+  </div>
   <div style="margin-bottom:10px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
       <span style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Min. Cost</span>
@@ -234,7 +247,7 @@
     </div>
   </div>
   <button onclick="reloadPermits()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(59,130,246,0.25);background:rgba(59,130,246,0.1);color:#60a5fa;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;">🔄 Reload Permits</button>
-  <p style="font-size:10.5px;color:#666;margin:0 0 14px;line-height:1.5;">Active construction permits from the City of San Francisco open data portal. Updated nightly.</p>
+  <p style="font-size:10.5px;color:#666;margin:0 0 14px;line-height:1.5;" id="permit-source-text">Active construction permits from city open data portals. Updated nightly.</p>
   <button class="btn-apply" onclick="applyFilters()">Apply Filters</button>
   <button class="btn-reset" onclick="resetFilters()">Reset</button>
 </div>
@@ -650,80 +663,303 @@ async function stillThere(id) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SF PERMIT DATA
+// MULTI-CITY PERMIT DATA
 // ═══════════════════════════════════════════════════════════════════════════════
-const PERMIT_API = 'https://data.sfgov.org/resource/i98e-djp9.json';
 
-// Permit types likely to have visible outdoor construction
-const VISIBLE_PERMIT_TYPES = [
-  'new construction',
-  'demolitions',
-  'additions alterations or repairs',
-  'otc alterations permit'
-];
+// Each city config defines: API URL, how to build the query, and how to parse results
+const CITY_CONFIGS = {
+  sf: {
+    name: 'San Francisco',
+    center: [37.7749, -122.4194],
+    api: 'https://data.sfgov.org/resource/i98e-djp9.json',
+    costField: 'estimated_cost',
+    costIsText: true, // needs ::number cast
+    statusFilter: "status='issued'",
+    dateField: 'issued_date',
+    locationMode: 'object', // location field is an object
+    select: 'permit_number,permit_type_definition,street_number,street_name,street_suffix,description,issued_date,estimated_cost,location,neighborhoods_analysis_boundaries',
+    parse: d => ({
+      permit_number: d.permit_number || '',
+      type: d.permit_type_definition || 'Unknown',
+      address: [d.street_number, d.street_name, d.street_suffix].filter(Boolean).join(' '),
+      description: (d.description || '').slice(0, 200),
+      issued_date: d.issued_date || '',
+      cost: d.estimated_cost ? parseInt(d.estimated_cost) : 0,
+      neighborhood: d.neighborhoods_analysis_boundaries || '',
+    }),
+  },
+  chicago: {
+    name: 'Chicago',
+    center: [41.8781, -87.6298],
+    api: 'https://data.cityofchicago.org/resource/ydr8-5enu.json',
+    costField: 'reported_cost',
+    costIsText: true,
+    statusFilter: null, // Chicago doesn't have a simple status field for issued
+    dateField: 'issue_date',
+    locationMode: 'latlong', // separate latitude/longitude fields
+    latField: 'latitude', lngField: 'longitude',
+    select: 'id,permit_type,work_description,issue_date,reported_cost,street_number,street_direction,street_name,suffix,latitude,longitude,community_area',
+    parse: d => ({
+      permit_number: d.id || '',
+      type: d.permit_type || 'Unknown',
+      address: [d.street_number, d.street_direction, d.street_name, d.suffix].filter(Boolean).join(' '),
+      description: (d.work_description || '').slice(0, 200),
+      issued_date: d.issue_date || '',
+      cost: d.reported_cost ? parseInt(d.reported_cost) : 0,
+      neighborhood: d.community_area ? 'Community Area ' + d.community_area : '',
+    }),
+  },
+  nyc: {
+    name: 'New York City',
+    center: [40.7128, -74.0060],
+    api: 'https://data.cityofnewyork.us/resource/ipu4-2q9a.json',
+    costField: null, // NYC permit issuance doesn't have a cost field in this dataset
+    costIsText: false,
+    statusFilter: "permit_status='ISSUED'",
+    dateField: 'issuance_date',
+    locationMode: 'latlong',
+    latField: 'gis_latitude', lngField: 'gis_longitude',
+    select: 'job_num,permit_type,permit_subtype,work_type,issuance_date,job_start_date,house_no,street_name,borough,gis_latitude,gis_longitude',
+    parse: d => ({
+      permit_number: d.job_num || '',
+      type: [d.permit_type, d.permit_subtype, d.work_type].filter(Boolean).join(' - '),
+      address: [d.house_no, d.street_name].filter(Boolean).join(' '),
+      description: '',
+      issued_date: d.issuance_date || '',
+      cost: 0,
+      neighborhood: d.borough || '',
+    }),
+  },
+  la: {
+    name: 'Los Angeles',
+    center: [34.0522, -118.2437],
+    api: 'https://data.lacity.org/resource/bi25-emib.json',
+    costField: 'valuation',
+    costIsText: true,
+    statusFilter: "status='Permit Issued'",
+    dateField: 'issue_date',
+    locationMode: 'latlong',
+    latField: 'latitude', lngField: 'longitude',
+    select: 'permit_nbr,permit_type,permit_sub_type,work_description,issue_date,valuation,address,latitude,longitude,community_plan_area',
+    parse: d => ({
+      permit_number: d.permit_nbr || '',
+      type: [d.permit_type, d.permit_sub_type].filter(Boolean).join(' - '),
+      address: d.address || '',
+      description: (d.work_description || '').slice(0, 200),
+      issued_date: d.issue_date || '',
+      cost: d.valuation ? parseInt(d.valuation) : 0,
+      neighborhood: d.community_plan_area || '',
+    }),
+  },
+  seattle: {
+    name: 'Seattle',
+    center: [47.6062, -122.3321],
+    api: 'https://data.seattle.gov/resource/76t5-zqzr.json',
+    costField: 'value',
+    costIsText: true,
+    statusFilter: "status_current='Permit Issued'",
+    dateField: 'issue_date',
+    locationMode: 'latlong',
+    latField: 'latitude', lngField: 'longitude',
+    select: 'application_permit_number,permit_type,description,issue_date,value,address,latitude,longitude,neighborhood',
+    parse: d => ({
+      permit_number: d.application_permit_number || '',
+      type: d.permit_type || 'Unknown',
+      address: d.address || '',
+      description: (d.description || '').slice(0, 200),
+      issued_date: d.issue_date || '',
+      cost: d.value ? parseInt(d.value) : 0,
+      neighborhood: d.neighborhood || '',
+    }),
+  },
+  austin: {
+    name: 'Austin',
+    center: [30.2672, -97.7431],
+    api: 'https://data.austintexas.gov/resource/3syk-w9eu.json',
+    costField: 'total_valuation',
+    costIsText: true,
+    statusFilter: "status_current='Issued'",
+    dateField: 'issued_date',
+    locationMode: 'latlong',
+    latField: 'latitude', lngField: 'longitude',
+    select: 'permit_number,permit_type_desc,work_class,description,issued_date,total_valuation,original_address,latitude,longitude,jurisdiction',
+    parse: d => ({
+      permit_number: d.permit_number || '',
+      type: [d.permit_type_desc, d.work_class].filter(Boolean).join(' - '),
+      address: d.original_address || '',
+      description: (d.description || '').slice(0, 200),
+      issued_date: d.issued_date || '',
+      cost: d.total_valuation ? parseInt(d.total_valuation) : 0,
+      neighborhood: d.jurisdiction || '',
+    }),
+  },
+  dc: {
+    name: 'Washington DC',
+    center: [38.9072, -77.0369],
+    api: 'https://opendata.dc.gov/resource/awxm-4of9.json',
+    costField: 'fees_paid',
+    costIsText: true,
+    statusFilter: "status='PERMIT ISSUED'",
+    dateField: 'issue_date',
+    locationMode: 'latlong',
+    latField: 'latitude', lngField: 'longitude',
+    select: 'permit_number,permit_type_name,permit_subtype_name,description_of_work,issue_date,fees_paid,full_address,latitude,longitude,ward',
+    parse: d => ({
+      permit_number: d.permit_number || '',
+      type: [d.permit_type_name, d.permit_subtype_name].filter(Boolean).join(' - '),
+      address: d.full_address || '',
+      description: (d.description_of_work || '').slice(0, 200),
+      issued_date: d.issue_date || '',
+      cost: d.fees_paid ? parseInt(d.fees_paid) : 0,
+      neighborhood: d.ward ? 'Ward ' + d.ward : '',
+    }),
+  },
+  portland: {
+    name: 'Portland',
+    center: [45.5152, -122.6784],
+    api: 'https://www.portlandmaps.com/arcgis/rest/services/Public/COP_OpenData_Development/MapServer/5/query',
+    isArcGIS: true, // Different API format
+    parse: d => ({
+      permit_number: d.CaseNumber || '',
+      type: d.CaseType || 'Unknown',
+      address: d.Address || '',
+      description: (d.Description || '').slice(0, 200),
+      issued_date: d.IssuedDate ? new Date(d.IssuedDate).toISOString() : '',
+      cost: d.Valuation ? parseInt(d.Valuation) : 0,
+      neighborhood: d.Neighborhood || '',
+    }),
+  },
+};
+
+let currentCity = 'sf';
+
+function extractLatLng(d, config) {
+  let lat, lng;
+
+  if (config.locationMode === 'latlong') {
+    lat = parseFloat(d[config.latField]);
+    lng = parseFloat(d[config.lngField]);
+  } else if (config.locationMode === 'object' && d.location) {
+    if (d.location.latitude && d.location.longitude) {
+      lat = parseFloat(d.location.latitude);
+      lng = parseFloat(d.location.longitude);
+    } else if (d.location.coordinates && d.location.coordinates.length === 2) {
+      lng = d.location.coordinates[0];
+      lat = d.location.coordinates[1];
+    } else if (typeof d.location === 'string') {
+      const m = d.location.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/);
+      if (m) { lng = parseFloat(m[1]); lat = parseFloat(m[2]); }
+    }
+  }
+
+  if (!lat || !lng || isNaN(lat) || isNaN(lng)) return null;
+  return { lat, lng };
+}
 
 async function loadPermitData() {
+  const config = CITY_CONFIGS[currentCity];
+  if (!config) return;
+
   try {
-    // Fetch recently issued permits with location data
-    // Filter: issued in last 180 days, has location, significant cost (>$50k suggests visible work)
-    const sixMonthsAgo = new Date(Date.now() - 180 * 864e5).toISOString().split('T')[0];
-    const costThreshold = sliderToCost(parseInt(document.getElementById('f-cost')?.value || '770'));
-    let whereClause = "status='issued' AND issued_date>'" + sixMonthsAgo + "' AND location IS NOT NULL AND estimated_cost IS NOT NULL";
-    if (costThreshold > 0) {
-      whereClause += " AND estimated_cost::number>" + costThreshold;
-    }
-    const where = encodeURIComponent(whereClause);
-    const select = 'permit_number,permit_type_definition,street_number,street_name,street_suffix,description,issued_date,estimated_cost,location,neighborhoods_analysis_boundaries';
-    const url = PERMIT_API + '?$where=' + where + '&$order=issued_date%20DESC&$limit=200&$select=' + select;
+    let data;
 
-    const res = await fetch(url);
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error('Permit API response:', errText);
-      throw new Error('API error: ' + res.status);
-    }
-    const data = await res.json();
+    if (config.isArcGIS) {
+      // ArcGIS REST API (Portland)
+      const costThreshold = sliderToCost(parseInt(document.getElementById('f-cost')?.value || '770'));
+      let whereClause = 'Status=\'Issued\'';
+      if (costThreshold > 0 && config.parse({}).cost !== undefined) {
+        whereClause += ' AND Valuation>' + costThreshold;
+      }
+      const params = new URLSearchParams({
+        where: whereClause,
+        outFields: '*',
+        f: 'json',
+        resultRecordCount: '200',
+        orderByFields: 'IssuedDate DESC',
+      });
+      const res = await fetch(config.api + '?' + params.toString());
+      if (!res.ok) throw new Error('API error: ' + res.status);
+      const json = await res.json();
+      data = (json.features || []).map(f => f.attributes);
 
-    permitData = [];
-    data.forEach(d => {
-      if (!d.location) return;
+      permitData = [];
+      data.forEach(d => {
+        // ArcGIS features have geometry
+        const feat = (json.features || []).find(f => f.attributes === d);
+        const geo = feat?.geometry;
+        if (!geo || !geo.x || !geo.y) return;
+        const parsed = config.parse(d);
+        parsed.lat = geo.y;
+        parsed.lng = geo.x;
+        permitData.push(parsed);
+      });
 
-      // SODA returns location as either:
-      // { latitude: "37.7", longitude: "-122.4" }  OR
-      // { type: "Point", coordinates: [-122.4, 37.7] }
-      let lat, lng;
-      if (d.location.latitude && d.location.longitude) {
-        lat = parseFloat(d.location.latitude);
-        lng = parseFloat(d.location.longitude);
-      } else if (d.location.coordinates && d.location.coordinates.length === 2) {
-        lng = d.location.coordinates[0];
-        lat = d.location.coordinates[1];
-      } else if (typeof d.location === 'string') {
-        // "POINT (-122.43 37.75)" format
-        const m = d.location.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/);
-        if (m) { lng = parseFloat(m[1]); lat = parseFloat(m[2]); }
+    } else {
+      // Socrata SODA API
+      const sixMonthsAgo = new Date(Date.now() - 180 * 864e5).toISOString().split('T')[0];
+      const costThreshold = sliderToCost(parseInt(document.getElementById('f-cost')?.value || '770'));
+
+      let whereParts = [];
+      if (config.statusFilter) whereParts.push(config.statusFilter);
+      whereParts.push(config.dateField + ">'" + sixMonthsAgo + "'");
+
+      // Location filter
+      if (config.locationMode === 'object') {
+        whereParts.push('location IS NOT NULL');
+      } else {
+        whereParts.push(config.latField + ' IS NOT NULL');
       }
 
-      if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+      // Cost filter
+      if (config.costField && costThreshold > 0) {
+        whereParts.push(config.costField + ' IS NOT NULL');
+        if (config.costIsText) {
+          whereParts.push(config.costField + '::number>' + costThreshold);
+        } else {
+          whereParts.push(config.costField + '>' + costThreshold);
+        }
+      }
 
-      permitData.push({
-        permit_number: d.permit_number || '',
-        type: d.permit_type_definition || 'Unknown',
-        address: [d.street_number, d.street_name, d.street_suffix].filter(Boolean).join(' '),
-        description: (d.description || '').slice(0, 200),
-        issued_date: d.issued_date || '',
-        cost: d.estimated_cost ? parseInt(d.estimated_cost) : 0,
-        neighborhood: d.neighborhoods_analysis_boundaries || '',
-        lat: lat,
-        lng: lng,
+      const where = encodeURIComponent(whereParts.join(' AND '));
+      const order = encodeURIComponent(config.dateField + ' DESC');
+      const url = config.api + '?$where=' + where + '&$order=' + order + '&$limit=200&$select=' + config.select;
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('Permit API response:', errText);
+        throw new Error('API error: ' + res.status);
+      }
+      data = await res.json();
+
+      permitData = [];
+      data.forEach(d => {
+        const coords = extractLatLng(d, config);
+        if (!coords) return;
+        const parsed = config.parse(d);
+        parsed.lat = coords.lat;
+        parsed.lng = coords.lng;
+        permitData.push(parsed);
       });
-    });
+    }
 
-    console.log('Loaded ' + permitData.length + ' SF permits');
+    console.log('Loaded ' + permitData.length + ' permits for ' + config.name);
     renderPermits();
   } catch (e) {
-    console.error('Failed to load permit data:', e);
+    console.error('Failed to load permit data for ' + config.name + ':', e);
+    permitData = [];
+    renderPermits();
   }
+}
+
+function onCityChange() {
+  const city = document.getElementById('f-city').value;
+  currentCity = city;
+  const config = CITY_CONFIGS[city];
+  if (config && config.center) {
+    map.setView(config.center, 12);
+  }
+  loadPermitData();
 }
 
 function makePermitIcon() {
@@ -750,14 +986,15 @@ function renderPermits() {
 }
 
 function showPermitPopup(permit, marker) {
-  const costStr = permit.cost ? '$' + permit.cost.toLocaleString() : 'Unknown';
+  const costStr = permit.cost ? '$' + permit.cost.toLocaleString() : 'N/A';
   const dateStr = permit.issued_date ? new Date(permit.issued_date).toLocaleDateString() : 'Unknown';
   const descClean = permit.description.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const cityName = CITY_CONFIGS[currentCity]?.name || 'City';
 
   const html = `<div class="pin-popup">
     <div class="pin-status">
       <div style="width:12px;height:12px;background:#3b82f6;border-radius:3px;box-shadow:0 0 10px rgba(59,130,246,0.5)"></div>
-      <span style="color:#60a5fa">SF Building Permit</span>
+      <span style="color:#60a5fa">${cityName} Permit</span>
     </div>
     <div class="pin-location">📍 ${permit.address || 'Address unavailable'}</div>
     ${permit.neighborhood ? `<div style="font-size:12px;color:#999;margin-bottom:8px;">📌 ${permit.neighborhood}</div>` : ''}
@@ -767,10 +1004,10 @@ function showPermitPopup(permit, marker) {
     </div>
     ${descClean ? `<div style="margin-bottom:10px;"><div style="font-size:10px;color:#777;margin-bottom:4px;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Description</div><p style="font-size:12px;color:#bbb;margin:0;line-height:1.5;">${descClean}</p></div>` : ''}
     <div class="pin-meta">
-      <span>💰 ${costStr}</span>
+      ${permit.cost ? `<span>💰 ${costStr}</span>` : ''}
       <span>📅 Issued ${dateStr}</span>
     </div>
-    <div style="font-size:10px;color:#555;margin-top:8px;text-align:center;">Data from SF Open Data (DBI)</div>
+    <div style="font-size:10px;color:#555;margin-top:8px;text-align:center;">Data from ${cityName} Open Data</div>
   </div>`;
   marker.bindPopup(html, { maxWidth: 380, minWidth: 260 }).openPopup();
 }
