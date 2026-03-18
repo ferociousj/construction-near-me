@@ -736,9 +736,9 @@ const CITY_CONFIGS = {
     costIsText: true,
     statusFilter: null, // status_desc has values like 'Permit Finaled' — skip filtering, just get recent
     dateField: 'issue_date',
-    locationMode: 'latlong',
-    latField: 'lat', lngField: 'lon',
-    select: 'permit_nbr,permit_type,permit_sub_type,issue_date,valuation,primary_address,work_desc,lat,lon,cpa',
+    locationMode: 'object',
+    locationField: 'geolocation',
+    select: 'permit_nbr,permit_type,permit_sub_type,issue_date,valuation,primary_address,work_desc,lat,lon,cpa,geolocation',
     parse: d => ({
       permit_number: d.permit_nbr || '',
       type: [d.permit_type, d.permit_sub_type].filter(Boolean).join(' - '),
@@ -748,6 +748,7 @@ const CITY_CONFIGS = {
       cost: d.valuation ? parseInt(d.valuation) : 0,
       neighborhood: d.cpa || '',
     }),
+    latFallback: 'lat', lngFallback: 'lon',
   },
   seattle: {
     name: 'Seattle',
@@ -804,7 +805,6 @@ function extractLatLng(d, config) {
     lat = parseFloat(d[config.latField]);
     lng = parseFloat(d[config.lngField]);
   } else if (config.locationMode === 'object') {
-    // Support custom location field name (e.g. LA uses 'location_1' instead of 'location')
     const locObj = d[config.locationField || 'location'];
     if (locObj) {
       if (locObj.latitude && locObj.longitude) {
@@ -818,6 +818,12 @@ function extractLatLng(d, config) {
         if (m) { lng = parseFloat(m[1]); lat = parseFloat(m[2]); }
       }
     }
+  }
+
+  // Fallback to separate lat/lng fields if the primary method didn't work
+  if ((!lat || !lng || isNaN(lat) || isNaN(lng)) && config.latFallback) {
+    lat = parseFloat(d[config.latFallback]);
+    lng = parseFloat(d[config.lngFallback]);
   }
 
   if (!lat || !lng || isNaN(lat) || isNaN(lng)) return null;
@@ -894,7 +900,10 @@ async function loadPermitData() {
         const url = config.api + '?$where=' + where + '&$order=' + order + '&$limit=200&$select=' + config.select;
 
         console.log('Fetching permits for ' + config.name + ' (cost mode: ' + costMode + '):', decodeURIComponent(url.replace(config.api + '?', '')));
-        const res = await fetch(url);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
         if (!res.ok) {
           const errText = await res.text();
           console.error('Permit API error for ' + config.name + ' (cost mode: ' + costMode + '):', errText);
@@ -1038,9 +1047,12 @@ async function reloadPermits() {
   const btn = document.querySelector('button[onclick="reloadPermits()"]');
   btn.textContent = '⏳ Loading...';
   btn.disabled = true;
-  await loadPermitData();
-  btn.textContent = '🔄 Reload Permits';
-  btn.disabled = false;
+  try {
+    await loadPermitData();
+  } finally {
+    btn.textContent = '🔄 Reload Permits';
+    btn.disabled = false;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
