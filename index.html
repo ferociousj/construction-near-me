@@ -714,10 +714,10 @@ const CITY_CONFIGS = {
     costField: null,
     costIsText: false,
     statusFilter: "permit_status='ISSUED'",
-    dateField: 'issuance_date',
+    dateField: 'dobrundate',
     locationMode: 'latlong',
     latField: 'gis_latitude', lngField: 'gis_longitude',
-    select: 'borough,house__,street_name,job_type,work_type,permit_type,issuance_date,gis_latitude,gis_longitude,gis_nta_name',
+    select: 'borough,house__,street_name,job_type,work_type,permit_type,issuance_date,dobrundate,gis_latitude,gis_longitude,gis_nta_name',
     parse: d => ({
       permit_number: d.house__ || '',
       type: [d.job_type, d.work_type, d.permit_type].filter(Boolean).join(' - '),
@@ -731,7 +731,7 @@ const CITY_CONFIGS = {
   la: {
     name: 'Los Angeles',
     center: [34.0522, -118.2437],
-    api: 'https://data.lacity.org/resource/bi25-emib.json',
+    api: 'https://data.lacity.org/resource/pi9x-tg5x.json',
     costField: 'valuation',
     costIsText: true,
     statusFilter: "latest_status='Issued'",
