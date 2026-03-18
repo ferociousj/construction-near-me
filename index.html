@@ -655,31 +655,51 @@ async function loadPermitData() {
     // Fetch recently issued permits with location data
     // Filter: issued in last 180 days, has location, significant cost (>$50k suggests visible work)
     const sixMonthsAgo = new Date(Date.now() - 180 * 864e5).toISOString().split('T')[0];
-    const query = [
-      `$where=current_status='issued'`,
-      `issued_date>'${sixMonthsAgo}'`,
-      `location IS NOT NULL`,
-      `estimated_cost>50000`,
-      `$order=issued_date DESC`,
-      `$limit=200`,
-      `$select=permit_number,permit_type_definition,street_number,street_name,street_suffix,description,issued_date,estimated_cost,location,neighborhoods_analysis_boundaries`
-    ].join('&');
+    const params = new URLSearchParams({
+      '$where': `status='issued' AND issued_date>'${sixMonthsAgo}' AND location IS NOT NULL AND estimated_cost>50000`,
+      '$order': 'issued_date DESC',
+      '$limit': '200',
+      '$select': 'permit_number,permit_type_definition,street_number,street_name,street_suffix,description,issued_date,estimated_cost,location,neighborhoods_analysis_boundaries'
+    });
 
-    const res = await fetch(PERMIT_API + '?' + query);
+    const res = await fetch(PERMIT_API + '?' + params.toString());
     if (!res.ok) throw new Error('API error: ' + res.status);
     const data = await res.json();
 
-    permitData = data.filter(d => d.location && d.location.latitude && d.location.longitude).map(d => ({
-      permit_number: d.permit_number || '',
-      type: d.permit_type_definition || 'Unknown',
-      address: [d.street_number, d.street_name, d.street_suffix].filter(Boolean).join(' '),
-      description: (d.description || '').slice(0, 200),
-      issued_date: d.issued_date || '',
-      cost: d.estimated_cost ? parseInt(d.estimated_cost) : 0,
-      neighborhood: d.neighborhoods_analysis_boundaries || '',
-      lat: parseFloat(d.location.latitude),
-      lng: parseFloat(d.location.longitude),
-    }));
+    permitData = [];
+    data.forEach(d => {
+      if (!d.location) return;
+
+      // SODA returns location as either:
+      // { latitude: "37.7", longitude: "-122.4" }  OR
+      // { type: "Point", coordinates: [-122.4, 37.7] }
+      let lat, lng;
+      if (d.location.latitude && d.location.longitude) {
+        lat = parseFloat(d.location.latitude);
+        lng = parseFloat(d.location.longitude);
+      } else if (d.location.coordinates && d.location.coordinates.length === 2) {
+        lng = d.location.coordinates[0];
+        lat = d.location.coordinates[1];
+      } else if (typeof d.location === 'string') {
+        // "POINT (-122.43 37.75)" format
+        const m = d.location.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/);
+        if (m) { lng = parseFloat(m[1]); lat = parseFloat(m[2]); }
+      }
+
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+
+      permitData.push({
+        permit_number: d.permit_number || '',
+        type: d.permit_type_definition || 'Unknown',
+        address: [d.street_number, d.street_name, d.street_suffix].filter(Boolean).join(' '),
+        description: (d.description || '').slice(0, 200),
+        issued_date: d.issued_date || '',
+        cost: d.estimated_cost ? parseInt(d.estimated_cost) : 0,
+        neighborhood: d.neighborhoods_analysis_boundaries || '',
+        lat: lat,
+        lng: lng,
+      });
+    });
 
     console.log('Loaded ' + permitData.length + ' SF permits');
     renderPermits();
