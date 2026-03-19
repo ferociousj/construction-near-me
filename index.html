@@ -423,15 +423,21 @@ async function dbLoadPins() {
 }
 
 async function dbInsertPin(pin) {
-  const res = await sbFetch('pins', {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/create_pin', {
     method: 'POST',
+    headers: sbHeaders(false),
     body: JSON.stringify({
-      lat: pin.lat, lng: pin.lng, machines: pin.machines,
-      good_view: pin.good_view, date_reported: pin.date_reported,
-      custom_machine: pin.custom_machine
+      p_lat: pin.lat, p_lng: pin.lng, p_machines: pin.machines,
+      p_good_view: pin.good_view, p_date_reported: pin.date_reported,
+      p_custom_machine: pin.custom_machine || ''
     })
   });
-  return res[0];
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error('Insert failed: ' + err);
+  }
+  const data = await res.json();
+  return data;
 }
 
 async function dbUpdatePin(id, updates) {
