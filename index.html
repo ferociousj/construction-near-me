@@ -260,7 +260,12 @@
     <p class="modal-sub" id="report-loc"></p>
     <div class="filter-label" style="margin-bottom:10px">Construction Machinery</div>
     <div class="machine-grid" id="report-machines"></div>
-    <input class="text-input" id="report-custom" placeholder="Other machinery (freeform)..." style="margin-bottom:20px">
+    <input class="text-input" id="report-custom" placeholder="Other machinery (freeform)..." style="margin-bottom:14px">
+    <div class="filter-label" style="margin-top:6px;margin-bottom:6px">Notes</div>
+    <div style="position:relative;margin-bottom:20px">
+      <textarea class="text-input" id="report-notes" placeholder="Any details — parking tips, best viewing spot, what's being built..." maxlength="140" rows="2" style="resize:vertical;font-family:inherit" oninput="document.getElementById('notes-count').textContent=this.value.length+'/140'"></textarea>
+      <span id="notes-count" style="position:absolute;bottom:6px;right:10px;font-size:10px;color:#555">0/140</span>
+    </div>
     <label class="gv-check" id="report-gv" onclick="toggleReportGv()">
       <input type="checkbox" id="report-gv-cb"> 👁 Good view of the construction?
     </label>
@@ -319,6 +324,7 @@
         <th onclick="adminSort('goodView')">View</th>
         <th onclick="adminSort('dateReported')">Date</th>
         <th onclick="adminSort('freshness')">Fresh</th>
+        <th onclick="adminSort('notes')">Notes</th>
       </tr></thead>
       <tbody id="admin-tbody"></tbody>
     </table>
@@ -386,14 +392,14 @@ function pinColor(f) { return f <= 7 ? '#22c55e' : f <= 14 ? '#eab308' : '#ef444
 function pinLabel(f) { return f <= 7 ? 'Green' : f <= 14 ? 'Yellow' : 'Red'; }
 
 const SEEDS = [
-  {lat:37.7849,lng:-122.4094,machines:["Excavator","Dump Truck","Construction Crane"],good_view:true,date_reported:new Date(Date.now()-2*D).toISOString(),custom_machine:""},
-  {lat:37.7695,lng:-122.4230,machines:["Bulldozer","Front Loader"],good_view:false,date_reported:new Date(Date.now()-8*D).toISOString(),custom_machine:""},
-  {lat:37.7780,lng:-122.3950,machines:["Concrete Mixer","Concrete Pumper","Crane Truck"],good_view:true,date_reported:new Date(Date.now()-16*D).toISOString(),custom_machine:""},
-  {lat:37.7920,lng:-122.4050,machines:["Steamroller","Asphalt Spreader","Road Grader"],good_view:false,date_reported:new Date(Date.now()-3*D).toISOString(),custom_machine:"Paving machine"},
-  {lat:37.7650,lng:-122.4320,machines:["Wrecking Ball","Excavator"],good_view:true,date_reported:new Date(Date.now()-22*D).toISOString(),custom_machine:""},
-  {lat:37.7810,lng:-122.4150,machines:["Forklift","Bobcat/Skid Steer"],good_view:false,date_reported:new Date(Date.now()-1*D).toISOString(),custom_machine:""},
-  {lat:37.7760,lng:-122.4280,machines:["Construction Crane","Concrete Mixer"],good_view:true,date_reported:new Date(Date.now()-5*D).toISOString(),custom_machine:""},
-  {lat:37.7880,lng:-122.4180,machines:["Backhoe","Dump Truck","Front Loader"],good_view:true,date_reported:new Date(Date.now()-11*D).toISOString(),custom_machine:""},
+  {lat:37.7849,lng:-122.4094,machines:["Excavator","Dump Truck","Construction Crane"],good_view:true,date_reported:new Date(Date.now()-2*D).toISOString(),custom_machine:"",notes:""},
+  {lat:37.7695,lng:-122.4230,machines:["Bulldozer","Front Loader"],good_view:false,date_reported:new Date(Date.now()-8*D).toISOString(),custom_machine:"",notes:""},
+  {lat:37.7780,lng:-122.3950,machines:["Concrete Mixer","Concrete Pumper","Crane Truck"],good_view:true,date_reported:new Date(Date.now()-16*D).toISOString(),custom_machine:"",notes:""},
+  {lat:37.7920,lng:-122.4050,machines:["Steamroller","Asphalt Spreader","Road Grader"],good_view:false,date_reported:new Date(Date.now()-3*D).toISOString(),custom_machine:"Paving machine",notes:""},
+  {lat:37.7650,lng:-122.4320,machines:["Wrecking Ball","Excavator"],good_view:true,date_reported:new Date(Date.now()-22*D).toISOString(),custom_machine:"",notes:""},
+  {lat:37.7810,lng:-122.4150,machines:["Forklift","Bobcat/Skid Steer"],good_view:false,date_reported:new Date(Date.now()-1*D).toISOString(),custom_machine:"",notes:""},
+  {lat:37.7760,lng:-122.4280,machines:["Construction Crane","Concrete Mixer"],good_view:true,date_reported:new Date(Date.now()-5*D).toISOString(),custom_machine:"",notes:""},
+  {lat:37.7880,lng:-122.4180,machines:["Backhoe","Dump Truck","Front Loader"],good_view:true,date_reported:new Date(Date.now()-11*D).toISOString(),custom_machine:"",notes:""},
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -418,7 +424,8 @@ async function dbLoadPins() {
   return rows.map(r => ({
     id: r.id, lat: r.lat, lng: r.lng,
     machines: r.machines || [], good_view: r.good_view,
-    date_reported: r.date_reported, custom_machine: r.custom_machine || ''
+    date_reported: r.date_reported, custom_machine: r.custom_machine || '',
+    notes: r.notes || ''
   }));
 }
 
@@ -429,7 +436,8 @@ async function dbInsertPin(pin) {
     body: JSON.stringify({
       p_lat: pin.lat, p_lng: pin.lng, p_machines: pin.machines,
       p_good_view: pin.good_view, p_date_reported: pin.date_reported,
-      p_custom_machine: pin.custom_machine || ''
+      p_custom_machine: pin.custom_machine || '',
+      p_notes: pin.notes || ''
     })
   });
   if (!res.ok) {
@@ -477,7 +485,8 @@ function localLoadPins() {
     return JSON.parse(raw).map(p => ({
       id: p.id, lat: p.lat, lng: p.lng,
       machines: p.machines || [], good_view: p.goodView ?? p.good_view ?? false,
-      date_reported: p.dateReported ?? p.date_reported, custom_machine: p.custom ?? p.custom_machine ?? ''
+      date_reported: p.dateReported ?? p.date_reported, custom_machine: p.custom ?? p.custom_machine ?? '',
+      notes: p.notes || ''
     }));
   }
   return SEEDS.map((s, i) => ({ ...s, id: 'seed' + i }));
@@ -490,6 +499,7 @@ function localSavePins() { localStorage.setItem('cnm-pins', JSON.stringify(pins)
 function pGoodView(p) { return p.good_view; }
 function pDate(p) { return p.date_reported; }
 function pCustom(p) { return p.custom_machine || ''; }
+function pNotes(p) { return p.notes || ''; }
 function pAllMachines(p) { return [...(p.machines||[]), ...(pCustom(p) ? [pCustom(p)] : [])]; }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -654,6 +664,7 @@ function showPinPopup(pin, marker) {
     <div class="pin-location">📍 ${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}</div>
     ${allM.length ? `<div class="pin-machines"><h5>Machinery</h5><div class="tags">${tags}</div></div>` : ''}
     <div class="pin-meta"><span>${pGoodView(pin)?'👁 Good view':'👁 No view info'}</span><span>📅 ${new Date(pDate(pin)).toLocaleDateString()}</span></div>
+    ${pNotes(pin) ? `<div style="margin-bottom:12px;padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.05);font-size:12.5px;color:#bbb;line-height:1.5;">📝 ${pNotes(pin).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}
     <button class="btn-still" onclick="stillThere('${pin.id}')">Still there? ✓</button>
   </div>`;
   marker.bindPopup(html, { maxWidth: 350, minWidth: 260 }).openPopup();
@@ -1175,6 +1186,7 @@ function closeReport() {
   document.getElementById('report-overlay').classList.remove('open');
   document.querySelectorAll('#report-machines input').forEach(el => { el.checked=false; el.parentElement.classList.remove('on'); });
   document.getElementById('report-custom').value = ''; document.getElementById('report-gv-cb').checked = false;
+  document.getElementById('report-notes').value = ''; document.getElementById('notes-count').textContent = '0/140';
   document.getElementById('report-gv').classList.remove('on'); newLatLng = null;
 }
 function toggleReportGv() { setTimeout(() => document.getElementById('report-gv').classList.toggle('on', document.getElementById('report-gv-cb').checked), 0); }
@@ -1183,8 +1195,9 @@ async function saveReport() {
   if (!newLatLng) return;
   const machines = Array.from(document.querySelectorAll('#report-machines input:checked')).map(e=>e.value);
   const custom = document.getElementById('report-custom').value.trim();
+  const notes = document.getElementById('report-notes').value.trim().slice(0, 140);
   const goodView = document.getElementById('report-gv-cb').checked;
-  const pin = { lat: newLatLng.lat, lng: newLatLng.lng, machines, good_view: goodView, date_reported: new Date().toISOString(), custom_machine: custom };
+  const pin = { lat: newLatLng.lat, lng: newLatLng.lng, machines, good_view: goodView, date_reported: new Date().toISOString(), custom_machine: custom, notes: notes };
 
   if (useDB) {
     try {
@@ -1261,6 +1274,7 @@ function adminSortedPins() {
     else if(adminSortCol==='dateReported'){av=new Date(pDate(a)).getTime();bv=new Date(pDate(b)).getTime();}
     else if(adminSortCol==='goodView'){av=pGoodView(a)?1:0;bv=pGoodView(b)?1:0;}
     else if(adminSortCol==='location'){av=a.lat;bv=b.lat;}
+    else if(adminSortCol==='notes'){av=pNotes(a);bv=pNotes(b);return adminSortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av);}
     else{av=a.machines.length;bv=b.machines.length;}
     return adminSortDir==='asc'?av-bv:bv-av;
   });
@@ -1277,7 +1291,7 @@ function renderAdminTable() {
   const sorted = adminSortedPins();
   document.getElementById('admin-count').textContent = pins.length + ' total · ' + sorted.length + ' shown' + (useDB ? ' (database)' : ' (offline)');
   const tbody = document.getElementById('admin-tbody');
-  if (!sorted.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No pins match.</td></tr>'; }
+  if (!sorted.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No pins match.</td></tr>'; }
   else {
     tbody.innerHTML = sorted.map(pin => {
       const f=freshness(pDate(pin)), c=pinColor(f);
@@ -1290,6 +1304,7 @@ function renderAdminTable() {
         <td style="color:${pGoodView(pin)?'#22c55e':'#555'};font-weight:500">${pGoodView(pin)?'Yes':'No'}</td>
         <td style="color:#999">${new Date(pDate(pin)).toLocaleDateString()}</td>
         <td><span class="fresh-dot" style="background:${c};box-shadow:0 0 6px ${c}50"></span>${f}d</td>
+        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#888;font-size:11px;" title="${(pNotes(pin)||'').replace(/"/g,'&quot;')}">${(pNotes(pin)||'').slice(0,40)}${pNotes(pin).length>40?'…':''}</td>
       </tr>`;
     }).join('');
   }
