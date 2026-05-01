@@ -650,7 +650,9 @@ function renderPins() {
   filtered.forEach(pin => {
     const fr = freshness(pDate(pin));
     const marker = L.marker([pin.lat, pin.lng], { icon: makeIcon(pinColor(fr), false) }).addTo(map);
-    marker.on('click', () => showPinPopup(pin, marker));
+    marker.on('click', () => {
+      if (!marker.getPopup() || !marker.getPopup().isOpen()) showPinPopup(pin, marker);
+    });
     markers.push(marker);
   });
 }
